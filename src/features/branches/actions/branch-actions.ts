@@ -12,6 +12,8 @@ export interface BranchInput {
   city: string;
   status?: string;
   autoCreateRooms?: boolean;
+  aiCabinCount?: number;
+  vipRoomCount?: number;
 }
 
 export async function getBranchesAction() {
@@ -100,26 +102,35 @@ export async function createBranchAction(input: BranchInput) {
         },
       });
 
-      // Tự động khởi tạo buồng trị liệu tiêu chuẩn cho cơ sở mới
+      // Tự động khởi tạo buồng trị liệu theo số lượng thiết lập
       if (input.autoCreateRooms !== false) {
-        await tx.roomBed.createMany({
-          data: [
-            {
-              branchId: branch.id,
-              code: `CABIN_AI_${cleanCode.slice(0, 4)}_01`,
-              name: "Cabin Từ Trường AI 01",
-              type: "AI_CABIN",
-              status: "AVAILABLE",
-            },
-            {
-              branchId: branch.id,
-              code: `VIP_${cleanCode.slice(0, 4)}_01`,
-              name: "Phòng VIP Đông Y 01 (Ngự Y)",
-              type: "VIP_SINGLE",
-              status: "AVAILABLE",
-            },
-          ],
-        });
+        const aiCount = Math.max(1, input.aiCabinCount || 2);
+        const vipCount = Math.max(1, input.vipRoomCount || 2);
+        const roomsToCreate = [];
+
+        for (let i = 1; i <= aiCount; i++) {
+          roomsToCreate.push({
+            branchId: branch.id,
+            code: `CABIN_AI_${cleanCode.slice(0, 4)}_${String(i).padStart(2, "0")}`,
+            name: `Cabin Từ Trường AI ${String(i).padStart(2, "0")}`,
+            type: "AI_CABIN",
+            status: "AVAILABLE",
+          });
+        }
+
+        const vipNames = ["Ngự Y", "Ngải Diệp", "Trầm Hương", "Hoàng Cung", "An Nhiên", "Tịnh Tâm"];
+        for (let i = 1; i <= vipCount; i++) {
+          const subName = vipNames[(i - 1) % vipNames.length];
+          roomsToCreate.push({
+            branchId: branch.id,
+            code: `VIP_${cleanCode.slice(0, 4)}_${String(i).padStart(2, "0")}`,
+            name: `Phòng VIP Đông Y ${String(i).padStart(2, "0")} (${subName})`,
+            type: "VIP_SINGLE",
+            status: "AVAILABLE",
+          });
+        }
+
+        await tx.roomBed.createMany({ data: roomsToCreate });
       }
 
       // Khởi tạo tồn kho ban đầu với các sản phẩm thảo dược hiện có

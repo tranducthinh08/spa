@@ -21,6 +21,7 @@ import {
 import { formatVND } from "@/shared/lib/utils";
 import { useRoleContext } from "@/shared/components/role-switcher-bar";
 import { BranchFormModal } from "./branch-form-modal";
+import { BranchRoomsModal } from "./branch-rooms-modal";
 import { getBranchesAction } from "@/features/branches/actions/branch-actions";
 
 interface BranchListViewProps {
@@ -34,6 +35,7 @@ export function BranchListView({ initialBranches }: BranchListViewProps) {
   const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<any | null>(null);
+  const [configuringRoomsBranch, setConfiguringRoomsBranch] = useState<any | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const { setSelectedBranch } = useRoleContext();
@@ -245,10 +247,16 @@ export function BranchListView({ initialBranches }: BranchListViewProps) {
                     </td>
 
                     <td className="py-3.5 px-3 text-center">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-800 font-semibold text-[11px]">
-                        <BedDouble className="w-3 h-3" />
-                        {b.counts?.rooms || b.rooms?.length || 0} buồng
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setConfiguringRoomsBranch(b)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-purple-800 font-bold text-[11px] border border-purple-200 transition cursor-pointer hover:shadow-xs group"
+                        title="Bấm để thiết lập số buồng & quản lý Cabin AI"
+                      >
+                        <BedDouble className="w-3.5 h-3.5 text-purple-700 group-hover:scale-110 transition" />
+                        <span>{b.counts?.rooms || b.rooms?.length || 0} buồng</span>
+                        <span className="text-[10px] text-purple-600 underline font-normal hidden sm:inline">Cài đặt</span>
+                      </button>
                     </td>
 
                     <td className="py-3.5 px-3 text-center">
@@ -283,6 +291,13 @@ export function BranchListView({ initialBranches }: BranchListViewProps) {
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
+                          onClick={() => setConfiguringRoomsBranch(b)}
+                          className="p-1.5 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 transition"
+                          title="Cấu hình số buồng & Cabin AI"
+                        >
+                          <BedDouble className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => handleEdit(b)}
                           className="p-1.5 rounded-lg border border-[#E5E2DD] hover:bg-[#FAF7F2] text-stone-700 transition"
                           title="Hiệu chỉnh thông tin"
@@ -313,6 +328,14 @@ export function BranchListView({ initialBranches }: BranchListViewProps) {
         onClose={() => setIsModalOpen(false)}
         onSuccess={reloadData}
         initialBranch={editingBranch}
+      />
+
+      {/* Modal Quản lý & Cấu hình Buồng phòng */}
+      <BranchRoomsModal
+        isOpen={!!configuringRoomsBranch}
+        onClose={() => setConfiguringRoomsBranch(null)}
+        branch={configuringRoomsBranch}
+        onSuccess={reloadData}
       />
     </div>
   );

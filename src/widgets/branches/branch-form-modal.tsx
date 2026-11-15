@@ -28,6 +28,8 @@ export function BranchFormModal({
   const [city, setCity] = useState("Hà Nội");
   const [status, setStatus] = useState("ACTIVE");
   const [autoCreateRooms, setAutoCreateRooms] = useState(true);
+  const [aiCabinCount, setAiCabinCount] = useState(2);
+  const [vipRoomCount, setVipRoomCount] = useState(2);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,28 +44,16 @@ export function BranchFormModal({
       setStatus(initialBranch.status || "ACTIVE");
       setAutoCreateRooms(false);
     } else {
-      setName("");
-      setCode("");
-      setAddress("");
-      setPhone("");
-      setCity("Hà Nội");
-      setStatus("ACTIVE");
-      setAutoCreateRooms(true);
+      setName(""); setCode(""); setAddress(""); setPhone("");
+      setCity("Hà Nội"); setStatus("ACTIVE"); setAutoCreateRooms(true);
     }
     setError(null);
   }, [initialBranch, isOpen]);
 
-  // Tự động gợi ý mã code khi gõ tên chi nhánh mới
   const handleNameChange = (val: string) => {
     setName(val);
     if (!isEditing && !code) {
-      const slug = val
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-zA-Z0-9\s]/g, "")
-        .trim()
-        .replace(/\s+/g, "_")
-        .toUpperCase();
+      const slug = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_").toUpperCase();
       setCode(slug.slice(0, 15));
     }
   };
@@ -71,40 +61,22 @@ export function BranchFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
     if (!name.trim()) return setError("Vui lòng nhập tên chi nhánh.");
     if (!code.trim()) return setError("Vui lòng nhập mã chi nhánh.");
     if (!address.trim()) return setError("Vui lòng nhập địa chỉ chi nhánh.");
     if (!phone.trim()) return setError("Vui lòng nhập số hotline liên hệ.");
-
     setLoading(true);
 
     try {
       if (isEditing) {
-        const res = await updateBranchAction(initialBranch.id, {
-          name,
-          address,
-          phone,
-          city,
-          status,
-        });
+        const res = await updateBranchAction(initialBranch.id, { name, address, phone, city, status });
         if (!res.success) throw new Error(res.error);
       } else {
-        const input: BranchInput = {
-          name,
-          code,
-          address,
-          phone,
-          city,
-          status,
-          autoCreateRooms,
-        };
+        const input: BranchInput = { name, code, address, phone, city, status, autoCreateRooms, aiCabinCount, vipRoomCount };
         const res = await createBranchAction(input);
         if (!res.success) throw new Error(res.error);
       }
-
-      onSuccess();
-      onClose();
+      onSuccess(); onClose();
     } catch (err: any) {
       setError(err.message || "Đã xảy ra lỗi khi lưu thông tin chi nhánh.");
     } finally {
@@ -245,7 +217,7 @@ export function BranchFormModal({
 
           {/* Option tự động tạo buồng phòng (chỉ khi tạo mới) */}
           {!isEditing && (
-            <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#E5E2DD]">
+            <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#E5E2DD] space-y-3">
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -256,13 +228,67 @@ export function BranchFormModal({
                 <div className="text-xs">
                   <span className="font-semibold text-[#032517] flex items-center gap-1">
                     <Sparkles className="w-3.5 h-3.5 text-[#775A19]" />
-                    Khởi tạo sẵn 2 buồng trị liệu tiêu chuẩn & định mức kho
+                    Khởi tạo sẵn buồng trị liệu & liên kết kho ({aiCabinCount + vipRoomCount} buồng)
                   </span>
                   <p className="text-[11px] text-[#424843] mt-0.5">
-                    Tự động tạo 1 Cabin Từ Trường AI, 1 Phòng VIP Đông Y Hoàng Cung và liên kết kho dược liệu.
+                    Tự động tạo số buồng theo thiết lập bên dưới và phân bổ dược liệu ban đầu.
                   </p>
                 </div>
               </label>
+
+              {autoCreateRooms && (
+                <div className="pt-2 border-t border-[#E5E2DD] grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-white p-2.5 rounded-xl border border-[#E5E2DD]">
+                    <span className="font-semibold text-[#032517] block mb-1">
+                      Cabin Từ Trường AI
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAiCabinCount(Math.max(1, aiCabinCount - 1))}
+                        className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200 font-bold"
+                      >
+                        -
+                      </button>
+                      <span className="font-bold text-[#112C1E] text-sm w-6 text-center">
+                        {aiCabinCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAiCabinCount(Math.min(10, aiCabinCount + 1))}
+                        className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200 font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-[#E5E2DD]">
+                    <span className="font-semibold text-[#032517] block mb-1">
+                      Phòng VIP Đông Y
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setVipRoomCount(Math.max(1, vipRoomCount - 1))}
+                        className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200 font-bold"
+                      >
+                        -
+                      </button>
+                      <span className="font-bold text-[#112C1E] text-sm w-6 text-center">
+                        {vipRoomCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setVipRoomCount(Math.min(10, vipRoomCount + 1))}
+                        className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200 font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
