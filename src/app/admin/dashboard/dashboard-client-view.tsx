@@ -96,6 +96,8 @@ export function DashboardClientView({
       {metrics && (
         <ExecutiveKpis
           totalRevenue={metrics.totalRevenue}
+          todayRevenue={metrics.todayRevenue}
+          revenueGrowth={metrics.revenueGrowth}
           occupancyRate={metrics.occupancyRate}
           activePackagesCount={metrics.activePackagesCount}
           totalCommissions={metrics.totalCommissions}
@@ -108,10 +110,16 @@ export function DashboardClientView({
       {metrics && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7 xl:col-span-8">
-            <BranchRevenueChart data={metrics.branchComparison} />
+            <BranchRevenueChart
+              data={metrics.branchComparison}
+              packageSharePercent={metrics.packageSharePercent}
+            />
           </div>
           <div className="lg:col-span-5 xl:col-span-4">
-            <TherapistLeaderboard therapists={metrics.therapistLeaderboard} />
+            <TherapistLeaderboard
+              therapists={metrics.therapistLeaderboard}
+              topServices={metrics.topServices}
+            />
           </div>
         </div>
       )}

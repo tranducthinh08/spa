@@ -1,11 +1,13 @@
 "use client";
 
 import React from "react";
-import { TrendingUp, CreditCard, Sparkles, DollarSign } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, CreditCard, Sparkles, DollarSign } from "lucide-react";
 import { formatVND } from "@/shared/lib/utils";
 
 interface ExecutiveKpiProps {
   totalRevenue: number;
+  todayRevenue?: number;
+  revenueGrowth?: number;
   occupancyRate: number;
   activePackagesCount: number;
   totalCommissions: number;
@@ -15,6 +17,8 @@ interface ExecutiveKpiProps {
 
 export function ExecutiveKpis({
   totalRevenue,
+  todayRevenue = 0,
+  revenueGrowth = 0,
   occupancyRate,
   activePackagesCount,
   totalCommissions,
@@ -23,7 +27,7 @@ export function ExecutiveKpis({
 }: ExecutiveKpiProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Card 1: Doanh Thu */}
+      {/* Card 1: Doanh Thu Toàn Chuỗi */}
       <div className="bg-white rounded-2xl p-5 border border-[#E5E2DD] shadow-xs relative overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-[#775A19] uppercase tracking-wider">
@@ -36,9 +40,31 @@ export function ExecutiveKpis({
         <div className="text-2xl font-bold font-serif text-[#032517]">
           {formatVND(totalRevenue)}
         </div>
-        <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
-          <TrendingUp className="w-3.5 h-3.5" />
-          <span>+18.4% so với hôm qua</span>
+
+        {/* Dynamic Mathematical Comparison */}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-medium">
+          {revenueGrowth > 0 ? (
+            <div className="inline-flex items-center gap-1 text-emerald-700">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+              <span>+{revenueGrowth}% so với hôm qua</span>
+            </div>
+          ) : revenueGrowth < 0 ? (
+            <div className="inline-flex items-center gap-1 text-red-700">
+              <TrendingDown className="w-3.5 h-3.5 text-red-600" />
+              <span>{revenueGrowth}% so với hôm qua</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1 text-stone-500">
+              <Minus className="w-3.5 h-3.5 text-stone-400" />
+              <span>0.0% so với hôm qua</span>
+            </div>
+          )}
+
+          {todayRevenue > 0 && (
+            <span className="text-[10px] text-stone-400 font-normal">
+              ({formatVND(todayRevenue)} hôm nay)
+            </span>
+          )}
         </div>
         <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-[#FED488]/10 rounded-full blur-xl pointer-events-none" />
       </div>
@@ -57,7 +83,7 @@ export function ExecutiveKpis({
           {activePackagesCount} Thẻ Hoàng Gia
         </div>
         <div className="mt-2 flex items-center gap-1.5 text-xs text-[#775A19] font-medium">
-          <span>Gói 16 buổi phòng ngừa đột quỵ</span>
+          <span>Gói 10 & 16 buổi phòng ngừa đột quỵ</span>
         </div>
       </div>
 

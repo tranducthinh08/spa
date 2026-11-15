@@ -18,9 +18,23 @@ export async function getDashboardMetricsAction(branchId?: string) {
     const isAll = !targetBranchId || targetBranchId === "ALL";
     const branchFilter = isAll ? {} : { branchId: targetBranchId };
 
-    // Single unified parallel fetch: All 8 DB operations execute concurrently in 1 roundtrip
+    // Accurate Vietnam Timezone (UTC+7) boundary computation
+    const now = new Date();
+    const vnDateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(now);
+    const startOfToday = new Date(`${vnDateStr}T00:00:00+07:00`);
+    const endOfToday = new Date(`${vnDateStr}T23:59:59.999+07:00`);
+
+    const yesterdayDate = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+    const vnYesterdayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(yesterdayDate);
+    const startOfYesterday = new Date(`${vnYesterdayStr}T00:00:00+07:00`);
+    const endOfYesterday = new Date(`${vnYesterdayStr}T23:59:59.999+07:00`);
+
+    // Unified parallel fetch across database
     const [
       revenueAgg,
+      todayRevenueAgg,
+      yesterdayRevenueAgg,
+      packageInvoicesAgg,
       commissionsAgg,
       rooms,
       activePackagesCount,
@@ -33,6 +47,30 @@ export async function getDashboardMetricsAction(branchId?: string) {
         where: { ...branchFilter, status: "PAID" },
         _sum: { finalAmount: true },
       }),
+      prisma.invoice.aggregate({
+        where: {
+          ...branchFilter,
+          status: "PAID",
+          createdAt: { gte: startOfToday, lte: endOfToday },
+        },
+        _sum: { finalAmount: true },
+      }),
+      prisma.invoice.aggregate({
+        where: {
+          ...branchFilter,
+          status: "PAID",
+          createdAt: { gte: startOfYesterday, lte: endOfYesterday },
+        },
+        _sum: { finalAmount: true },
+      }),
+      prisma.invoice.aggregate({
+        where: {
+          ...branchFilter,
+          status: "PAID",
+          appointmentId: null,
+        },
+        _sum: { finalAmount: true },
+      }),
       prisma.staffCommission.aggregate({
         where: isAll ? {} : { appointment: { branchId: targetBranchId } },
         _sum: { commissionAmount: true },
@@ -41,7 +79,7 @@ export async function getDashboardMetricsAction(branchId?: string) {
       prisma.customerPackage.count({ where: { status: "ACTIVE" } }),
       prisma.branch.findMany({
         include: {
-          invoices: { where: { status: "PAID" }, select: { finalAmount: true } },
+          invoices: { where: { status: "PAID" }, select: { finalAmount: true, appointmentId: true } },
           rooms: { select: { status: true } },
           _count: { select: { appointments: true } },
         },
@@ -59,7 +97,7 @@ export async function getDashboardMetricsAction(branchId?: string) {
           service: true,
         },
         orderBy: { startTime: "asc" },
-        take: 20,
+        take: 30,
       }),
       prisma.branchInventory.findMany({
         where: {
@@ -73,6 +111,23 @@ export async function getDashboardMetricsAction(branchId?: string) {
     ]);
 
     const totalRevenue = revenueAgg._sum.finalAmount || 0;
+    const todayRevenue = todayRevenueAgg._sum.finalAmount || 0;
+    const yesterdayRevenue = yesterdayRevenueAgg._sum.finalAmount || 0;
+    const packageRevenue = packageInvoicesAgg._sum.finalAmount || 0;
+
+    const packageSharePercent = totalRevenue > 0
+      ? Number(((packageRevenue / totalRevenue) * 100).toFixed(1))
+      : 0;
+
+    let revenueGrowth = 0;
+    if (yesterdayRevenue > 0) {
+      revenueGrowth = Number((((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100).toFixed(1));
+    } else if (todayRevenue > 0) {
+      revenueGrowth = 100.0;
+    } else {
+      revenueGrowth = 0.0;
+    }
+
     const totalCommissions = commissionsAgg._sum.commissionAmount || 0;
 
     // Room & Cabin Occupancy Calculation
@@ -83,6 +138,8 @@ export async function getDashboardMetricsAction(branchId?: string) {
     // Multi-branch Comparison
     const branchComparison = allBranches.map((b) => {
       const rev = b.invoices.reduce((s, inv) => s + inv.finalAmount, 0);
+      const pkgRev = b.invoices.filter((inv) => !inv.appointmentId).reduce((s, inv) => s + inv.finalAmount, 0);
+      const singleRev = rev - pkgRev;
       const bTotalRooms = b.rooms.length;
       const bOccupiedRooms = b.rooms.filter((r) => r.status === "OCCUPIED").length;
       const bOccupancyRate = bTotalRooms > 0 ? Math.round((bOccupiedRooms / bTotalRooms) * 100) : 0;
@@ -93,6 +150,8 @@ export async function getDashboardMetricsAction(branchId?: string) {
         name: b.name.replace("Plumeria ", "").split("—")[0].trim(),
         fullName: b.name,
         revenue: rev,
+        packageRevenue: pkgRev,
+        singleRevenue: singleRev,
         totalRooms: bTotalRooms,
         occupiedRooms: bOccupiedRooms,
         occupancyRate: bOccupancyRate,
@@ -116,10 +175,30 @@ export async function getDashboardMetricsAction(branchId?: string) {
       .sort((a, b) => b.totalCommissions - a.totalCommissions)
       .slice(0, 5);
 
+    // Dynamic Top Services Booking Ratio
+    const totalAppointmentsCount = todayAppointments.length;
+    const serviceCounts = new Map<string, number>();
+    for (const apt of todayAppointments) {
+      const name = apt.service?.name || "Khác";
+      serviceCounts.set(name, (serviceCounts.get(name) || 0) + 1);
+    }
+    const topServices = Array.from(serviceCounts.entries())
+      .map(([name, count]) => ({
+        name,
+        count,
+        percent: totalAppointmentsCount > 0 ? Math.round((count / totalAppointmentsCount) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 2);
+
     return {
       success: true,
       data: {
         totalRevenue,
+        todayRevenue,
+        yesterdayRevenue,
+        revenueGrowth,
+        packageSharePercent,
         occupancyRate,
         totalRooms,
         occupiedRooms,
@@ -127,6 +206,7 @@ export async function getDashboardMetricsAction(branchId?: string) {
         activePackagesCount,
         branchComparison,
         therapistLeaderboard,
+        topServices,
         todayAppointments,
         lowStockInventories,
       },
