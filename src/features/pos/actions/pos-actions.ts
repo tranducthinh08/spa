@@ -3,6 +3,7 @@
 import { prisma } from "@/shared/lib/prisma";
 import { safeRevalidatePath } from "@/shared/lib/safe-revalidate";
 import { getCurrentSessionAction } from "@/features/auth/actions/auth-actions";
+import { resolveBranch } from "@/shared/lib/resolve-branch";
 
 export async function getInventoryStockAction(branchId?: string) {
   try {
@@ -15,7 +16,8 @@ export async function getInventoryStockAction(branchId?: string) {
     if (session.role === "BRANCH_MANAGER" && session.branchId) {
       whereClause.branchId = session.branchId;
     } else if (branchId && branchId !== "ALL") {
-      whereClause.branchId = branchId;
+      const matched = await resolveBranch(branchId);
+      whereClause.branchId = matched ? matched.id : branchId;
     }
 
     const inventory = await prisma.branchInventory.findMany({
@@ -55,14 +57,17 @@ export async function updateInventoryStockAction(data: {
       return { success: false, error: "Unauthorized: Chỉ Hội Đồng Quản Trị hoặc Giám Đốc Chi Nhánh mới được cập nhật kho." };
     }
 
-    if (session.role === "BRANCH_MANAGER" && session.branchId && session.branchId !== data.branchId) {
+    const matchedBranch = await resolveBranch(data.branchId);
+    const resolvedBranchId = matchedBranch?.id || data.branchId;
+
+    if (session.role === "BRANCH_MANAGER" && session.branchId && session.branchId !== resolvedBranchId) {
       return { success: false, error: "Bạn chỉ có quyền điều chỉnh kho của chi nhánh mình phụ trách." };
     }
 
     const current = await prisma.branchInventory.findUnique({
       where: {
         branchId_productId: {
-          branchId: data.branchId,
+          branchId: resolvedBranchId,
           productId: data.productId,
         },
       },
@@ -81,12 +86,12 @@ export async function updateInventoryStockAction(data: {
     const updated = await prisma.branchInventory.upsert({
       where: {
         branchId_productId: {
-          branchId: data.branchId,
+          branchId: resolvedBranchId,
           productId: data.productId,
         },
       },
       create: {
-        branchId: data.branchId,
+        branchId: resolvedBranchId,
         productId: data.productId,
         quantity: newQty,
         reorderLevel: 10,
@@ -117,7 +122,8 @@ export async function getRecentInvoicesAction(branchId?: string, limit = 10) {
     if (session.role === "BRANCH_MANAGER" && session.branchId) {
       where.branchId = session.branchId;
     } else if (branchId && branchId !== "ALL") {
-      where.branchId = branchId;
+      const matched = await resolveBranch(branchId);
+      where.branchId = matched ? matched.id : branchId;
     }
 
     const invoices = await prisma.invoice.findMany({

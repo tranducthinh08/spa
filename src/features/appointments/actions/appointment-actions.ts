@@ -4,6 +4,7 @@ import { prisma } from "@/shared/lib/prisma";
 import { completeAppointmentTransaction } from "../model/complete-session";
 import { safeRevalidatePath } from "@/shared/lib/safe-revalidate";
 import { getCurrentSessionAction } from "@/features/auth/actions/auth-actions";
+import { resolveBranch } from "@/shared/lib/resolve-branch";
 
 export async function getAppointmentsAction(filters?: {
   branchId?: string;
@@ -20,7 +21,8 @@ export async function getAppointmentsAction(filters?: {
     const whereClause: any = {};
 
     if (filters?.branchId && filters.branchId !== "ALL") {
-      whereClause.branchId = filters.branchId;
+      const matched = await resolveBranch(filters.branchId);
+      whereClause.branchId = matched ? matched.id : filters.branchId;
     }
 
     if (filters?.therapistId) {
@@ -250,6 +252,9 @@ export async function registerPackageAndLinkAction(params: {
     const pkgCode = `PKG-${Date.now().toString().slice(-6)}-${customer.phone.slice(-4)}`;
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}-${pkgCode.slice(-4)}`;
 
+    const matchedBranch = await resolveBranch(params.branchId);
+    const resolvedBranchId = matchedBranch?.id || params.branchId;
+
     const transactionResult = await prisma.$transaction(async (tx) => {
       // 1. Create CustomerPackage
       const createdPackage = await tx.customerPackage.create({
@@ -283,7 +288,7 @@ export async function registerPackageAndLinkAction(params: {
       const createdInvoice = await tx.invoice.create({
         data: {
           invoiceNumber,
-          branchId: params.branchId,
+          branchId: resolvedBranchId,
           customerId: customer.id,
           totalAmount: basePrice,
           discountAmount: discount,

@@ -3,6 +3,7 @@
 import { prisma } from "@/shared/lib/prisma";
 import { getCurrentSessionAction } from "@/features/auth/actions/auth-actions";
 import { safeRevalidatePath } from "@/shared/lib/safe-revalidate";
+import { resolveBranch } from "@/shared/lib/resolve-branch";
 
 export interface StaffUserInput {
   name: string;
@@ -34,10 +35,13 @@ export async function getStaffUsersAction(selectedBranch: string = "ALL") {
         whereClause.branchId = session.branchId;
       }
     } else if (selectedBranch && selectedBranch !== "ALL") {
-      // Super Admin lọc theo chi nhánh cụ thể
-      whereClause.branch = {
-        code: selectedBranch,
-      };
+      // Super Admin lọc theo chi nhánh cụ thể (hỗ trợ cả code lẫn cuid)
+      const matched = await resolveBranch(selectedBranch);
+      if (matched) {
+        whereClause.branchId = matched.id;
+      } else {
+        whereClause.branch = { code: selectedBranch };
+      }
     }
 
     const [staffList, branches] = await Promise.all([

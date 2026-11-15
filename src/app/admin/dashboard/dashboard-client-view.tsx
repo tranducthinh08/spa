@@ -16,6 +16,18 @@ interface DashboardClientViewProps {
   initialInvoices: any[];
 }
 
+const BRANCH_NAMES: Record<string, string> = {
+  ALL: "Toàn Chuỗi Toàn Quốc",
+  LANG_HA: "Cơ Sở Láng Hạ",
+  OCEAN_PARK: "Cơ Sở Ocean Park",
+  CAU_GIAY: "Cơ Sở Cầu Giấy",
+  SON_TAY: "Cơ Sở Sơn Tây",
+  HAI_PHONG: "Cơ Sở Hải Phòng",
+  BAC_NINH: "Cơ Sở Bắc Ninh",
+  HCM_TAN_BINH: "Cơ Sở Tân Bình",
+  HCM_BINH_THANH: "Cơ Sở Bình Thạnh",
+};
+
 export function DashboardClientView({
   initialMetrics,
   initialInvoices,
@@ -69,7 +81,9 @@ export function DashboardClientView({
             </span>
           </div>
           <p className="text-xs text-[#424843] mt-1">
-            Dữ liệu thời gian thực hội sở và liên kết 4 chi nhánh toàn quốc
+            {selectedBranch === "ALL"
+              ? "Dữ liệu thời gian thực hội sở và liên kết toàn chuỗi 7 chi nhánh toàn quốc"
+              : `Dữ liệu thời gian thực được lọc riêng cho ${BRANCH_NAMES[selectedBranch] || selectedBranch}`}
           </p>
         </div>
 
@@ -95,6 +109,7 @@ export function DashboardClientView({
       {/* Row 1: 4 Executive KPI Cards */}
       {metrics && (
         <ExecutiveKpis
+          branchTitle={selectedBranch === "ALL" ? "Doanh Thu Toàn Chuỗi" : `Doanh Thu ${BRANCH_NAMES[selectedBranch] || selectedBranch}`}
           totalRevenue={metrics.totalRevenue}
           todayRevenue={metrics.todayRevenue}
           revenueGrowth={metrics.revenueGrowth}

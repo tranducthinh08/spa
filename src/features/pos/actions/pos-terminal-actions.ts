@@ -4,6 +4,7 @@ import { prisma } from "@/shared/lib/prisma";
 import { safeRevalidatePath } from "@/shared/lib/safe-revalidate";
 import { getCurrentSessionAction } from "@/features/auth/actions/auth-actions";
 import { completeAppointmentTransaction } from "@/features/appointments/model/complete-session";
+import { resolveBranch } from "@/shared/lib/resolve-branch";
 
 export async function getPosTerminalDataAction(branchId?: string) {
   try {
@@ -17,8 +18,9 @@ export async function getPosTerminalDataAction(branchId?: string) {
       targetBranch = session.branchId;
     }
 
-    const isAll = !targetBranch || targetBranch === "ALL";
-    const branchFilter = isAll ? {} : { branchId: targetBranch };
+    const matchedBranch = await resolveBranch(targetBranch);
+    const resolvedBranchId = matchedBranch?.id;
+    const branchFilter = resolvedBranchId ? { branchId: resolvedBranchId } : {};
 
     // Parallel fetch of all POS terminal dependencies
     const [appointments, packageServices, customers, branches, todayInvoices] = await Promise.all([
@@ -159,6 +161,9 @@ export async function sellPackageAction(params: {
     const pkgCode = `PKG-${Date.now().toString().slice(-6)}-${customer.phone.slice(-4)}`;
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}-${pkgCode.slice(-4)}`;
 
+    const matchedBranch = await resolveBranch(params.branchId);
+    const resolvedBranchId = matchedBranch?.id || params.branchId;
+
     const transactionResult = await prisma.$transaction(async (tx) => {
       // 1. Create CustomerPackage
       const createdPackage = await tx.customerPackage.create({
@@ -179,7 +184,7 @@ export async function sellPackageAction(params: {
       const createdInvoice = await tx.invoice.create({
         data: {
           invoiceNumber,
-          branchId: params.branchId,
+          branchId: resolvedBranchId,
           customerId: customer.id,
           totalAmount: basePrice,
           discountAmount: discount,
@@ -221,7 +226,8 @@ export async function getFilteredInvoicesAction(filters: {
   try {
     const where: any = {};
     if (filters.branchId && filters.branchId !== "ALL") {
-      where.branchId = filters.branchId;
+      const matched = await resolveBranch(filters.branchId);
+      where.branchId = matched?.id || filters.branchId;
     }
     if (filters.paymentMethod && filters.paymentMethod !== "ALL") {
       where.paymentMethod = filters.paymentMethod;

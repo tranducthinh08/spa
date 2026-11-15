@@ -2,6 +2,7 @@
 
 import { prisma } from "@/shared/lib/prisma";
 import { getCurrentSessionAction } from "@/features/auth/actions/auth-actions";
+import { resolveBranch } from "@/shared/lib/resolve-branch";
 
 export async function getDashboardMetricsAction(branchId?: string) {
   try {
@@ -10,13 +11,15 @@ export async function getDashboardMetricsAction(branchId?: string) {
       return { success: false, error: "Unauthorized access: Bạn không có quyền xem báo cáo điều hành chuỗi." };
     }
 
-    let targetBranchId = branchId;
+    let targetBranchParam = branchId;
     if (session.role === "BRANCH_MANAGER" && session.branchId) {
-      targetBranchId = session.branchId;
+      targetBranchParam = session.branchId;
     }
 
-    const isAll = !targetBranchId || targetBranchId === "ALL";
-    const branchFilter = isAll ? {} : { branchId: targetBranchId };
+    const matchedBranch = await resolveBranch(targetBranchParam);
+    const resolvedBranchId = matchedBranch?.id;
+    const isAll = !resolvedBranchId;
+    const branchFilter = resolvedBranchId ? { branchId: resolvedBranchId } : {};
 
     // Accurate Vietnam Timezone (UTC+7) boundary computation
     const now = new Date();
@@ -72,11 +75,23 @@ export async function getDashboardMetricsAction(branchId?: string) {
         _sum: { finalAmount: true },
       }),
       prisma.staffCommission.aggregate({
-        where: isAll ? {} : { appointment: { branchId: targetBranchId } },
+        where: isAll ? {} : { appointment: { branchId: resolvedBranchId } },
         _sum: { commissionAmount: true },
       }),
       prisma.roomBed.findMany({ where: branchFilter }),
-      prisma.customerPackage.count({ where: { status: "ACTIVE" } }),
+      prisma.customerPackage.count({
+        where: {
+          status: "ACTIVE",
+          ...(resolvedBranchId
+            ? {
+                OR: [
+                  { customer: { branchId: resolvedBranchId } },
+                  { customer: { customerAppointments: { some: { branchId: resolvedBranchId } } } },
+                ],
+              }
+            : {}),
+        },
+      }),
       prisma.branch.findMany({
         include: {
           invoices: { where: { status: "PAID" }, select: { finalAmount: true, appointmentId: true } },
@@ -85,7 +100,7 @@ export async function getDashboardMetricsAction(branchId?: string) {
         },
       }),
       prisma.staffCommission.findMany({
-        where: isAll ? {} : { appointment: { branchId: targetBranchId } },
+        where: isAll ? {} : { appointment: { branchId: resolvedBranchId } },
         include: { therapist: true },
       }),
       prisma.appointment.findMany({

@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Minus, CreditCard, Sparkles, DollarSign } fro
 import { formatVND } from "@/shared/lib/utils";
 
 interface ExecutiveKpiProps {
+  branchTitle?: string;
   totalRevenue: number;
   todayRevenue?: number;
   revenueGrowth?: number;
@@ -16,6 +17,7 @@ interface ExecutiveKpiProps {
 }
 
 export function ExecutiveKpis({
+  branchTitle,
   totalRevenue,
   todayRevenue = 0,
   revenueGrowth = 0,
@@ -27,11 +29,11 @@ export function ExecutiveKpis({
 }: ExecutiveKpiProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Card 1: Doanh Thu Toàn Chuỗi */}
+      {/* Card 1: Doanh Thu Toàn Chuỗi / Chi Nhánh */}
       <div className="bg-white rounded-2xl p-5 border border-[#E5E2DD] shadow-xs relative overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-[#775A19] uppercase tracking-wider">
-            Doanh Thu Toàn Chuỗi
+            {branchTitle || "Doanh Thu Toàn Chuỗi"}
           </span>
           <div className="w-8 h-8 rounded-xl bg-[#FED488]/40 text-[#775A19] flex items-center justify-center">
             <DollarSign className="w-4 h-4" />

@@ -17,6 +17,30 @@ interface AdminShellProps {
   children: React.ReactNode;
 }
 
+const BRANCH_LABELS: Record<string, string> = {
+  ALL: "Hội Sở Điều Hành Toàn Chuỗi",
+  LANG_HA: "Plumeria Láng Hạ",
+  OCEAN_PARK: "Plumeria Ocean Park",
+  CAU_GIAY: "Plumeria Cầu Giấy",
+  SON_TAY: "Plumeria Sơn Tây",
+  HAI_PHONG: "Plumeria Hải Phòng",
+  BAC_NINH: "Plumeria Bắc Ninh",
+  HCM_TAN_BINH: "Plumeria Tân Bình",
+  HCM_BINH_THANH: "Plumeria Bình Thạnh",
+};
+
+const BRANCH_OPTIONS = [
+  { value: "ALL", label: "Toàn Chuỗi 7 Cơ Sở" },
+  { value: "LANG_HA", label: "Plumeria Láng Hạ (Flagship)" },
+  { value: "OCEAN_PARK", label: "Plumeria Ocean Park Luxury" },
+  { value: "CAU_GIAY", label: "Plumeria Cầu Giấy" },
+  { value: "SON_TAY", label: "Plumeria Sơn Tây Luxury" },
+  { value: "HAI_PHONG", label: "Plumeria Hải Phòng" },
+  { value: "BAC_NINH", label: "Plumeria Bắc Ninh" },
+  { value: "HCM_TAN_BINH", label: "Plumeria Tân Bình - TP.HCM" },
+  { value: "HCM_BINH_THANH", label: "Plumeria Bình Thạnh - TP.HCM" },
+];
+
 export function AdminShell({ children }: AdminShellProps) {
   const { selectedBranch, setSelectedBranch } = useRoleContext();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -63,7 +87,7 @@ export function AdminShell({ children }: AdminShellProps) {
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#112C1E]/5 text-[#112C1E] font-semibold border border-[#112C1E]/10">
                 <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
                 <span>
-                  {selectedBranch === "ALL" ? "Hội Sở Điều Hành Toàn Chuỗi" : `Cơ Sở: ${selectedBranch}`}
+                  {selectedBranch === "ALL" ? "Hội Sở Điều Hành Toàn Chuỗi" : `Cơ Sở: ${BRANCH_LABELS[selectedBranch] || selectedBranch}`}
                 </span>
               </div>
             </div>
@@ -79,11 +103,11 @@ export function AdminShell({ children }: AdminShellProps) {
                 onChange={(e) => setSelectedBranch(e.target.value)}
                 className="bg-white border border-[#E5E2DD] text-[#032517] rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#C5A059] shadow-2xs"
               >
-                <option value="ALL">Toàn Chuỗi 7 Cơ Sở</option>
-                <option value="LANG_HA">Plumeria Láng Hạ (Flagship)</option>
-                <option value="SON_TAY">Plumeria Sơn Tây Luxury</option>
-                <option value="OCEAN_PARK">Plumeria Ocean Park</option>
-                <option value="HAI_PHONG">Plumeria Hải Phòng</option>
+                {BRANCH_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
 
