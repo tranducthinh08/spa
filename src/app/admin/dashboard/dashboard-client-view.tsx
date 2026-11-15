@@ -104,15 +104,15 @@ export function DashboardClientView({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Period Segmented Control */}
-          <div className="inline-flex items-center p-1 bg-[#FAF7F2] rounded-xl border border-[#E5E2DD] text-xs font-semibold">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full xl:w-auto">
+          {/* Period Segmented Control with horizontal touch scroll */}
+          <div className="flex items-center p-1 bg-[#FAF7F2] rounded-xl border border-[#E5E2DD] text-xs font-semibold overflow-x-auto max-w-full scrollbar-none gap-1">
             {PERIOD_OPTIONS.map((item) => (
               <button
                 key={item.id}
                 onClick={() => handlePeriodChange(item.id)}
                 disabled={loading}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap flex-shrink-0 min-h-[34px] flex items-center justify-center ${
                   selectedPeriod === item.id
                     ? "bg-[#112C1E] text-[#FED488] shadow-2xs font-bold"
                     : "text-[#424843] hover:text-[#032517]"
@@ -123,21 +123,23 @@ export function DashboardClientView({
             ))}
           </div>
 
-          <button
-            onClick={() => loadData(selectedBranch, selectedPeriod)}
-            disabled={loading}
-            className="p-2 rounded-xl border border-[#E5E2DD] hover:bg-[#FAF7F2] text-[#424843] transition disabled:opacity-50"
-            title="Làm mới dữ liệu"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          </button>
-          <button
-            onClick={() => alert("Báo cáo Hội Sở đã được kết xuất thành công dạng PDF/Excel.")}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1B3B2B] hover:bg-[#032517] text-[#FED488] text-xs font-semibold shadow-xs transition"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Xuất Báo Cáo</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => loadData(selectedBranch, selectedPeriod)}
+              disabled={loading}
+              className="p-2 rounded-xl border border-[#E5E2DD] hover:bg-[#FAF7F2] text-[#424843] transition disabled:opacity-50 min-h-[38px] min-w-[38px] flex items-center justify-center"
+              title="Làm mới dữ liệu"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              onClick={() => alert("Báo cáo Hội Sở đã được kết xuất thành công dạng PDF/Excel.")}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1B3B2B] hover:bg-[#032517] text-[#FED488] text-xs font-semibold shadow-xs transition min-h-[38px]"
+            >
+              <Download className="w-3.5 h-3.5 shrink-0" />
+              <span>Xuất Báo Cáo</span>
+            </button>
+          </div>
         </div>
       </div>
 

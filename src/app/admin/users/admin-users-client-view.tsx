@@ -210,8 +210,8 @@ export function AdminUsersClientView({
 
       {/* Staff Table */}
       <div className="bg-white rounded-2xl border border-[#E5E2DD] shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[720px] text-left text-xs">
             <thead className="bg-[#FAF7F2] border-b border-[#E5E2DD] text-[#775A19] font-bold uppercase text-[10px] tracking-wider">
               <tr>
                 <th className="py-3 px-4">Nhân Sự</th>

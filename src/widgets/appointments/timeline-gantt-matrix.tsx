@@ -37,27 +37,29 @@ export function TimelineGanttMatrix({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E5E2DD] shadow-xs overflow-hidden flex flex-col">
-      {/* Header Axis */}
-      <div className="flex border-b border-[#E5E2DD] bg-[#FAF7F2] text-[11px] font-semibold text-[#775A19]">
-        <div className="w-56 shrink-0 p-3 border-r border-[#E5E2DD]">
-          Phòng / Cabin Trị Liệu
-        </div>
-        <div className="flex-1 grid grid-cols-10 divide-x divide-[#E5E2DD]/70 text-center py-2.5">
-          {hours.slice(0, 10).map((h) => (
-            <div key={h}>{`${h.toString().padStart(2, "0")}:00`}</div>
-          ))}
-        </div>
-      </div>
-
-      {/* Rows */}
-      <div className="divide-y divide-[#E5E2DD]/70 overflow-x-auto min-w-[750px]">
-        {rooms.length === 0 ? (
-          <div className="py-12 text-center text-[#775A19] text-xs flex flex-col items-center justify-center">
-            <p className="font-semibold text-[#032517]">Cơ sở này chưa có buồng trị liệu nào được thiết lập</p>
-            <p className="text-[11px] text-stone-500 mt-1">Vui lòng vào Quản lý Chi nhánh để cấu hình buồng phòng</p>
+    <div className="bg-white rounded-2xl border border-[#E5E2DD] shadow-xs overflow-hidden flex flex-col w-full min-w-0">
+      <div className="overflow-x-auto w-full">
+        <div className="min-w-[800px] flex flex-col">
+          {/* Header Axis */}
+          <div className="flex border-b border-[#E5E2DD] bg-[#FAF7F2] text-[11px] font-semibold text-[#775A19]">
+            <div className="w-56 shrink-0 p-3 border-r border-[#E5E2DD]">
+              Phòng / Cabin Trị Liệu
+            </div>
+            <div className="flex-1 grid grid-cols-10 divide-x divide-[#E5E2DD]/70 text-center py-2.5">
+              {hours.slice(0, 10).map((h) => (
+                <div key={h}>{`${h.toString().padStart(2, "0")}:00`}</div>
+              ))}
+            </div>
           </div>
-        ) : (
+
+          {/* Rows */}
+          <div className="divide-y divide-[#E5E2DD]/70">
+            {rooms.length === 0 ? (
+              <div className="py-12 text-center text-[#775A19] text-xs flex flex-col items-center justify-center">
+                <p className="font-semibold text-[#032517]">Cơ sở này chưa có buồng trị liệu nào được thiết lập</p>
+                <p className="text-[11px] text-stone-500 mt-1">Vui lòng vào Quản lý Chi nhánh để cấu hình buồng phòng</p>
+              </div>
+            ) : (
           rooms.map((room) => {
             const roomApts = appointments.filter((a) => a.roomBedId === room.id);
 
@@ -141,6 +143,8 @@ export function TimelineGanttMatrix({
             </div>
           );
         }))}
+          </div>
+        </div>
       </div>
 
       {/* Legend sub-footer */}

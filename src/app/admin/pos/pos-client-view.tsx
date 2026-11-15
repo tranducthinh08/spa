@@ -107,12 +107,12 @@ export function PosClientView({
       {/* POS Shift Summary KPIs */}
       <PosShiftSummaryBar invoices={invoices} />
 
-      {/* Tab Navigation Controls */}
-      <div className="flex items-center gap-2 border-b border-[#E5E2DD] pb-2 text-xs font-bold">
+      {/* Tab Navigation Controls with touch scroll */}
+      <div className="flex items-center gap-2 border-b border-[#E5E2DD] pb-2 text-xs font-bold overflow-x-auto scrollbar-none max-w-full">
         {[
-          { id: "checkout", label: `Thanh Toán Ca Trị Liệu (${appointments.length})`, icon: CreditCard },
+          { id: "checkout", label: `Thanh Toán Ca (${appointments.length})`, icon: CreditCard },
           { id: "packages", label: "Phát Hành Thẻ Liệu Trình", icon: Sparkles },
-          { id: "history", label: `Sổ Quỹ & Lịch Sử Hóa Đơn (${invoices.length})`, icon: Receipt },
+          { id: "history", label: `Sổ Quỹ Hóa Đơn (${invoices.length})`, icon: Receipt },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -120,13 +120,13 @@ export function PosClientView({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl transition ${
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl transition whitespace-nowrap flex-shrink-0 min-h-[38px] ${
                 isActive
                   ? "bg-[#1B3B2B] text-[#FED488] shadow-xs"
                   : "bg-white text-stone-600 hover:bg-[#FAF7F2] border border-[#E5E2DD]"
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-4 h-4 shrink-0" />
               <span>{tab.label}</span>
             </button>
           );

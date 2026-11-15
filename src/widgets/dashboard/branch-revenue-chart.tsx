@@ -87,40 +87,40 @@ export function BranchRevenueChart({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          {/* View Mode Toggle */}
-          <div className="inline-flex items-center p-1 bg-[#FAF7F2] rounded-xl border border-[#E5E2DD] text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* View Mode Toggle with touch scroll */}
+          <div className="flex items-center p-1 bg-[#FAF7F2] rounded-xl border border-[#E5E2DD] text-xs font-semibold overflow-x-auto max-w-full scrollbar-none gap-1">
             <button
               onClick={() => setViewMode("table")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap flex-shrink-0 min-h-[34px] ${
                 viewMode === "table"
                   ? "bg-[#112C1E] text-[#FED488] shadow-2xs"
                   : "text-[#424843] hover:text-[#032517]"
               }`}
             >
-              <TableIcon className="w-3.5 h-3.5" />
+              <TableIcon className="w-3.5 h-3.5 shrink-0" />
               <span>Dạng Bảng</span>
             </button>
             <button
               onClick={() => setViewMode("trend")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap flex-shrink-0 min-h-[34px] ${
                 viewMode === "trend"
                   ? "bg-[#112C1E] text-[#FED488] shadow-2xs"
                   : "text-[#424843] hover:text-[#032517]"
               }`}
             >
-              <TrendingUp className="w-3.5 h-3.5" />
+              <TrendingUp className="w-3.5 h-3.5 shrink-0" />
               <span>Xu Hướng Ngày</span>
             </button>
             <button
               onClick={() => setViewMode("chart")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap flex-shrink-0 min-h-[34px] ${
                 viewMode === "chart"
                   ? "bg-[#112C1E] text-[#FED488] shadow-2xs"
                   : "text-[#424843] hover:text-[#032517]"
               }`}
             >
-              <BarChart3 className="w-3.5 h-3.5" />
+              <BarChart3 className="w-3.5 h-3.5 shrink-0" />
               <span>Cơ Cấu Thu</span>
             </button>
           </div>
@@ -128,11 +128,11 @@ export function BranchRevenueChart({
           {/* Quick link to Branch Management */}
           <Link
             href="/admin/branches"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#FAF7F2] hover:bg-[#F0EDE9] border border-[#E5E2DD] text-xs font-semibold text-[#112C1E] transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAF7F2] hover:bg-[#F0EDE9] border border-[#E5E2DD] text-xs font-semibold text-[#112C1E] transition whitespace-nowrap min-h-[34px]"
             title="Quản lý thông tin chi nhánh chuỗi"
           >
             <span>Quản Lý Cơ Sở</span>
-            <ExternalLink className="w-3.5 h-3.5 text-[#775A19]" />
+            <ExternalLink className="w-3.5 h-3.5 text-[#775A19] shrink-0" />
           </Link>
         </div>
       </div>

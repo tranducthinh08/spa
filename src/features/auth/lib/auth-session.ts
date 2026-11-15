@@ -33,13 +33,18 @@ function bufferToBase64Url(buffer: ArrayBuffer | Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-// Convert base64url to string
+// Convert base64url to string safely with UTF-8 decoding
 function base64UrlToStr(base64url: string): string {
   let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
   while (base64.length % 4) {
     base64 += "=";
   }
-  return atob(base64);
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new TextDecoder().decode(bytes);
 }
 
 // Sign payload using Web Crypto API

@@ -81,7 +81,7 @@ export function BranchListView({ initialBranches }: BranchListViewProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full overflow-hidden min-w-0">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E5E2DD] shadow-xs">
         <div>
@@ -192,9 +192,9 @@ export function BranchListView({ initialBranches }: BranchListViewProps) {
       </div>
 
       {/* Branches Table */}
-      <div className="bg-white rounded-2xl border border-[#E5E2DD] shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+      <div className="bg-white rounded-2xl border border-[#E5E2DD] shadow-xs overflow-hidden w-full max-w-full min-w-0">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[780px] text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-[#E5E2DD] bg-[#FAF7F2] text-[#775A19] font-semibold uppercase tracking-wider text-[11px]">
                 <th className="py-3 px-4">Cơ Sở & Mã Định Danh</th>
