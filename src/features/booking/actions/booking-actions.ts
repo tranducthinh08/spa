@@ -2,6 +2,7 @@
 
 import { prisma } from "@/shared/lib/prisma";
 import { safeRevalidatePath } from "@/shared/lib/safe-revalidate";
+import { resolveBranch } from "@/shared/lib/resolve-branch";
 
 export interface CreateBookingInput {
   branchId: string;
@@ -142,6 +143,10 @@ export async function createBookingAction(input: CreateBookingInput) {
 
 export async function getBookingWizardDataAction(branchId?: string, customerPhone?: string) {
   try {
+    const isAll = !branchId || branchId === "ALL";
+    const matchedBranch = await resolveBranch(branchId);
+    const resolvedBranchId = matchedBranch?.id;
+
     // Stage 1: Fetch branches & service categories in parallel
     const [branches, categories] = await Promise.all([
       prisma.branch.findMany({
@@ -154,20 +159,28 @@ export async function getBookingWizardDataAction(branchId?: string, customerPhon
       }),
     ]);
 
-    const activeBranchId = branchId || branches[0]?.id;
-
     // Stage 2: Fetch rooms, therapists, and customer packages in parallel
     const [rooms, therapists, customerPackages] = await Promise.all([
-      activeBranchId
+      isAll
         ? prisma.roomBed.findMany({
-            where: { branchId: activeBranchId },
+            include: { branch: true },
+            orderBy: [{ branchId: "asc" }, { name: "asc" }],
+          })
+        : resolvedBranchId
+        ? prisma.roomBed.findMany({
+            where: { branchId: resolvedBranchId },
+            include: { branch: true },
             orderBy: { name: "asc" },
           })
         : [],
       prisma.user.findMany({
         where: {
           role: "THERAPIST",
-          OR: [{ branchId: activeBranchId }, { branchId: null }],
+          OR: isAll
+            ? [{ role: "THERAPIST" }]
+            : resolvedBranchId
+            ? [{ branchId: resolvedBranchId }, { branchId: null }]
+            : [{ role: "THERAPIST" }],
         },
         select: {
           id: true,

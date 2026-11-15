@@ -32,16 +32,16 @@ export function AppointmentsClientView({
     setLoading(true);
     const [aptsRes, wizardRes] = await Promise.all([
       getAppointmentsAction({ branchId: branch }),
-      getBookingWizardDataAction(branch !== "ALL" ? branch : undefined),
+      getBookingWizardDataAction(branch),
     ]);
 
     if (aptsRes.success && aptsRes.data) {
       setAppointments(aptsRes.data);
-      if (!selectedAppointment && aptsRes.data.length > 0) {
-        setSelectedAppointment(aptsRes.data[0]);
-      } else if (selectedAppointment) {
+      if (selectedAppointment) {
         const updated = aptsRes.data.find((a: any) => a.id === selectedAppointment.id);
-        if (updated) setSelectedAppointment(updated);
+        setSelectedAppointment(updated || (aptsRes.data.length > 0 ? aptsRes.data[0] : null));
+      } else {
+        setSelectedAppointment(aptsRes.data.length > 0 ? aptsRes.data[0] : null);
       }
     }
 

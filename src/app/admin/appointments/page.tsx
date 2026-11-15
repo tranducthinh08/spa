@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function AppointmentsPage() {
   const [aptsRes, wizardRes] = await Promise.all([
     getAppointmentsAction({ branchId: "ALL" }),
-    getBookingWizardDataAction(undefined),
+    getBookingWizardDataAction("ALL"),
   ]);
 
   const initialAppointments = aptsRes.success ? aptsRes.data || [] : [];

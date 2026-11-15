@@ -52,11 +52,17 @@ export function TimelineGanttMatrix({
 
       {/* Rows */}
       <div className="divide-y divide-[#E5E2DD]/70 overflow-x-auto min-w-[750px]">
-        {rooms.map((room) => {
-          const roomApts = appointments.filter((a) => a.roomBedId === room.id);
+        {rooms.length === 0 ? (
+          <div className="py-12 text-center text-[#775A19] text-xs flex flex-col items-center justify-center">
+            <p className="font-semibold text-[#032517]">Cơ sở này chưa có buồng trị liệu nào được thiết lập</p>
+            <p className="text-[11px] text-stone-500 mt-1">Vui lòng vào Quản lý Chi nhánh để cấu hình buồng phòng</p>
+          </div>
+        ) : (
+          rooms.map((room) => {
+            const roomApts = appointments.filter((a) => a.roomBedId === room.id);
 
-          return (
-            <div key={room.id} className="flex min-h-[72px] hover:bg-[#FCF9F4] transition">
+            return (
+              <div key={room.id} className="flex min-h-[72px] hover:bg-[#FCF9F4] transition">
               {/* Room Metadata Column */}
               <div className="w-56 shrink-0 p-3 border-r border-[#E5E2DD] flex flex-col justify-center bg-[#FAF7F2]/40">
                 <div className="text-xs font-bold text-[#032517] flex items-center gap-1.5">
@@ -134,7 +140,7 @@ export function TimelineGanttMatrix({
               </div>
             </div>
           );
-        })}
+        }))}
       </div>
 
       {/* Legend sub-footer */}
