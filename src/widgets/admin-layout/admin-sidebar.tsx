@@ -11,6 +11,7 @@ import {
   Sparkles,
   FlaskConical,
   Users,
+  Building2,
   Settings,
   LogOut,
   ArrowLeftRight,
@@ -91,6 +92,12 @@ export function AdminSidebar({ onCloseMobile }: AdminSidebarProps) {
       href: "/admin/users",
       label: "Nhân sự & Hoa hồng",
       icon: Users,
+      roles: ["SUPER_ADMIN", "BRANCH_MANAGER"] as RoleType[],
+    },
+    {
+      href: "/admin/branches",
+      label: "Quản lý Chi nhánh",
+      icon: Building2,
       roles: ["SUPER_ADMIN", "BRANCH_MANAGER"] as RoleType[],
     },
   ];

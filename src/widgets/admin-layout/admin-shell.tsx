@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Menu,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useRoleContext } from "@/shared/components/role-switcher-bar";
 import { AdminSidebar } from "./admin-sidebar";
+import { getBranchesAction } from "@/features/branches/actions/branch-actions";
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -44,6 +45,29 @@ const BRANCH_OPTIONS = [
 export function AdminShell({ children }: AdminShellProps) {
   const { selectedBranch, setSelectedBranch } = useRoleContext();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [dynamicBranches, setDynamicBranches] = useState<Array<{ code: string; name: string }>>([]);
+
+  useEffect(() => {
+    getBranchesAction().then((res) => {
+      if (res.success && res.data) {
+        setDynamicBranches(res.data.map((b: any) => ({ code: b.code, name: b.name })));
+      }
+    });
+  }, []);
+
+  const options = dynamicBranches.length > 0
+    ? [
+        { value: "ALL", label: "Toàn Chuỗi Toàn Quốc" },
+        ...dynamicBranches.map((b) => ({ value: b.code, label: b.name })),
+      ]
+    : BRANCH_OPTIONS;
+
+  const currentBranchLabel =
+    selectedBranch === "ALL"
+      ? "Hội Sở Điều Hành Toàn Chuỗi"
+      : dynamicBranches.find((b) => b.code === selectedBranch)?.name ||
+        BRANCH_LABELS[selectedBranch] ||
+        selectedBranch;
 
   return (
     <div className="min-h-screen bg-[#FCF9F4] flex">
@@ -86,9 +110,7 @@ export function AdminShell({ children }: AdminShellProps) {
               <ChevronRight className="hidden sm:inline w-3.5 h-3.5 text-stone-300" />
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#112C1E]/5 text-[#112C1E] font-semibold border border-[#112C1E]/10">
                 <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-                <span>
-                  {selectedBranch === "ALL" ? "Hội Sở Điều Hành Toàn Chuỗi" : `Cơ Sở: ${BRANCH_LABELS[selectedBranch] || selectedBranch}`}
-                </span>
+                <span>{currentBranchLabel}</span>
               </div>
             </div>
           </div>
@@ -101,9 +123,9 @@ export function AdminShell({ children }: AdminShellProps) {
               <select
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
-                className="bg-white border border-[#E5E2DD] text-[#032517] rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#C5A059] shadow-2xs"
+                className="bg-white border border-[#E5E2DD] text-[#032517] rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#C5A059] shadow-2xs max-w-[220px] truncate"
               >
-                {BRANCH_OPTIONS.map((opt) => (
+                {options.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
