@@ -41,7 +41,14 @@ export async function getAppointmentsAction(filters?: {
     const appointments = await prisma.appointment.findMany({
       where: whereClause,
       include: {
-        customer: true,
+        customer: {
+          include: {
+            customerPackages: {
+              where: { status: "ACTIVE" },
+              include: { service: true },
+            },
+          },
+        },
         therapist: true,
         roomBed: true,
         service: {
@@ -49,7 +56,9 @@ export async function getAppointmentsAction(filters?: {
             consumables: { include: { product: true } },
           },
         },
-        customerPackage: true,
+        customerPackage: {
+          include: { service: true },
+        },
         invoice: true,
         commission: true,
       },
@@ -170,6 +179,141 @@ export async function updateAppointmentStatusAction(
     return { success: true, data: updated };
   } catch (error: any) {
     console.error("Status update error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function linkPackageToAppointmentAction(
+  appointmentId: string,
+  customerPackageId: string | null
+) {
+  try {
+    const session = await getCurrentSessionAction();
+    if (!session || !["SUPER_ADMIN", "BRANCH_MANAGER", "RECEPTIONIST"].includes(session.role)) {
+      return { success: false, error: "Unauthorized access: Vui lòng đăng nhập quản trị/lễ tân." };
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { customerPackageId },
+      include: {
+        customerPackage: { include: { service: true } },
+        service: true,
+      },
+    });
+
+    safeRevalidatePath("/admin/appointments");
+    safeRevalidatePath("/admin/pos");
+    return { success: true, data: updated };
+  } catch (error: any) {
+    console.error("linkPackageToAppointmentAction error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function registerPackageAndLinkAction(params: {
+  appointmentId: string;
+  customerId: string;
+  serviceId: string;
+  branchId: string;
+  paymentMethod: "CASH" | "BANK_TRANSFER" | "CARD";
+  discountAmount?: number;
+}) {
+  try {
+    const session = await getCurrentSessionAction();
+    if (!session || !["SUPER_ADMIN", "BRANCH_MANAGER", "RECEPTIONIST"].includes(session.role)) {
+      return { success: false, error: "Unauthorized access: Bạn không có quyền đăng ký gói liệu trình." };
+    }
+
+    const service = await prisma.service.findUnique({
+      where: { id: params.serviceId },
+    });
+    if (!service || !service.packagePrice) {
+      return { success: false, error: "Dịch vụ này không có biểu phí gói liệu trình dài hạn." };
+    }
+
+    const customer = await prisma.user.findUnique({
+      where: { id: params.customerId },
+    });
+    if (!customer) {
+      return { success: false, error: "Không tìm thấy hồ sơ thượng khách." };
+    }
+
+    const totalSessions = service.packageSessions || 16;
+    const basePrice = service.packagePrice;
+    const discount = Math.min(basePrice, Math.max(0, params.discountAmount || 0));
+    const finalAmount = Math.max(0, basePrice - discount);
+
+    const expiryDate = new Date();
+    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+
+    const pkgCode = `PKG-${Date.now().toString().slice(-6)}-${customer.phone.slice(-4)}`;
+    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}-${pkgCode.slice(-4)}`;
+
+    const transactionResult = await prisma.$transaction(async (tx) => {
+      // 1. Create CustomerPackage
+      const createdPackage = await tx.customerPackage.create({
+        data: {
+          code: pkgCode,
+          customerId: customer.id,
+          serviceId: service.id,
+          totalSessions,
+          usedSessions: 0,
+          remainingSessions: totalSessions,
+          expiryDate,
+          status: "ACTIVE",
+        },
+        include: { service: true },
+      });
+
+      // 2. Link directly to the current appointment
+      const updatedAppointment = await tx.appointment.update({
+        where: { id: params.appointmentId },
+        data: { customerPackageId: createdPackage.id },
+        include: {
+          customerPackage: { include: { service: true } },
+          service: true,
+          customer: true,
+          therapist: true,
+          roomBed: true,
+        },
+      });
+
+      // 3. Create Package Purchase Invoice
+      const createdInvoice = await tx.invoice.create({
+        data: {
+          invoiceNumber,
+          branchId: params.branchId,
+          customerId: customer.id,
+          totalAmount: basePrice,
+          discountAmount: discount,
+          finalAmount,
+          paymentMethod: params.paymentMethod,
+          status: "PAID",
+        },
+      });
+
+      // 4. Reward loyalty points
+      await tx.user.update({
+        where: { id: customer.id },
+        data: { loyaltyPoints: { increment: 200 } },
+      });
+
+      return {
+        package: createdPackage,
+        appointment: updatedAppointment,
+        invoice: createdInvoice,
+      };
+    });
+
+    safeRevalidatePath("/admin/appointments");
+    safeRevalidatePath("/admin/customers");
+    safeRevalidatePath("/admin/pos");
+    safeRevalidatePath("/admin/dashboard");
+
+    return { success: true, data: transactionResult };
+  } catch (error: any) {
+    console.error("registerPackageAndLinkAction error:", error);
     return { success: false, error: error.message };
   }
 }

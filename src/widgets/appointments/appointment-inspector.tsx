@@ -8,12 +8,17 @@ import {
   PackageCheck,
   CheckCircle2,
   Play,
-  XCircle,
   FileText,
   User,
+  PlusCircle,
+  Unlink,
 } from "lucide-react";
 import { formatVND, formatTimeVN } from "@/shared/lib/utils";
-import { updateAppointmentStatusAction } from "@/features/appointments/actions/appointment-actions";
+import {
+  updateAppointmentStatusAction,
+  linkPackageToAppointmentAction,
+} from "@/features/appointments/actions/appointment-actions";
+import { PackageRegistrationModal } from "./package-registration-modal";
 
 interface InspectorProps {
   appointment: any | null;
@@ -23,6 +28,7 @@ interface InspectorProps {
 export function AppointmentInspector({ appointment, onRefresh }: InspectorProps) {
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
   if (!appointment) {
     return (
@@ -50,13 +56,23 @@ export function AppointmentInspector({ appointment, onRefresh }: InspectorProps)
     onRefresh();
   };
 
+  const handleLinkPackage = async (packageId: string | null) => {
+    setLoading(true);
+    await linkPackageToAppointmentAction(appointment.id, packageId);
+    setLoading(false);
+    onRefresh();
+  };
+
   const isCompleted = appointment.status === "COMPLETED";
   const isInProgress = appointment.status === "IN_PROGRESS";
   const isConfirmed = appointment.status === "CONFIRMED";
   const isCheckedIn = appointment.status === "CHECKED_IN";
 
+  const customerPackages = appointment.customer?.customerPackages || [];
+  const linkedPackage = appointment.customerPackage;
+
   return (
-    <div className="bg-white rounded-2xl border border-[#E5E2DD] shadow-sm p-5 space-y-4 relative overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#E5E2DD] shadow-sm p-5 space-y-4 relative overflow-hidden text-[#1C1C19]">
       {/* Customer VIP Profile Card */}
       <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#E5E2DD] flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -131,24 +147,104 @@ export function AppointmentInspector({ appointment, onRefresh }: InspectorProps)
         </p>
       </div>
 
-      {/* Package Deduction & Stock Consumables Box */}
-      <div className="border border-[#E5E2DD] rounded-xl p-3 bg-white space-y-2 text-xs">
+      {/* Interactive Package Management & Deduction */}
+      <div className="border border-[#E5E2DD] rounded-xl p-3 bg-white space-y-2.5 text-xs">
         <div className="flex items-center justify-between text-[#775A19] font-bold">
           <span className="flex items-center gap-1.5">
             <PackageCheck className="w-4 h-4 text-emerald-700" />
-            Khấu Trừ Thẻ & Dược Liệu BOM
+            <span>Thẻ Liệu Trình & Khấu Trừ Buổi</span>
           </span>
         </div>
-        <div className="text-[11px] text-[#424843] bg-emerald-50 text-emerald-900 p-2 rounded-lg border border-emerald-200">
-          {appointment.customerPackageId ? (
-            <span>
-              Sử dụng <strong>Thẻ 16 Buổi Hoàng Gia</strong> (Tự động trừ 1 buổi khi bấm Hoàn tất)
-            </span>
-          ) : (
-            <span>Dịch vụ trải nghiệm đơn buổi (Thanh toán tại quầy POS)</span>
-          )}
-        </div>
-        <div className="text-[10px] text-[#424843] flex items-center justify-between pt-1">
+
+        {linkedPackage ? (
+          <div className="bg-purple-50 p-3 rounded-xl border border-purple-200 text-purple-950 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-[11px] flex items-center gap-1 text-purple-900">
+                <Sparkles className="w-3.5 h-3.5 text-purple-700" />
+                <span>{linkedPackage.code} • {linkedPackage.service?.name || "Thẻ Hoàng Gia"}</span>
+              </span>
+              {!isCompleted && (
+                <button
+                  type="button"
+                  onClick={() => handleLinkPackage(null)}
+                  disabled={loading}
+                  className="text-[10px] text-red-700 hover:text-red-900 flex items-center gap-0.5 underline"
+                >
+                  <Unlink className="w-3 h-3" />
+                  <span>Hủy dùng thẻ</span>
+                </button>
+              )}
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] text-purple-900">
+                <span>Đã dùng: <strong>{linkedPackage.usedSessions}/{linkedPackage.totalSessions} buổi</strong></span>
+                <span className="font-bold text-emerald-800">Còn lại: {linkedPackage.remainingSessions} buổi</span>
+              </div>
+              <div className="w-full bg-purple-200 h-1.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-[#1B3B2B] h-full rounded-full"
+                  style={{
+                    width: `${Math.round((linkedPackage.usedSessions / linkedPackage.totalSessions) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="text-[10px] text-purple-800 bg-white/70 p-1.5 rounded-lg border border-purple-200/60 font-medium">
+              ✓ Ca này tự động trừ 1 buổi khi bấm Hoàn tất (Hóa đơn thu: 0 ₫).
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-950 text-[11px]">
+              Ca trị liệu này hiện đang tính phí trải nghiệm đơn lẻ ({formatVND(appointment.service?.singlePrice || 0)}).
+            </div>
+
+            {/* Customer has existing active packages available */}
+            {customerPackages.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold text-stone-500 uppercase">Gán Thẻ Có Sẵn Của Thượng Khách:</span>
+                {customerPackages.map((pkg: any) => (
+                  <div
+                    key={pkg.id}
+                    className="p-2 rounded-xl bg-[#FAF7F2] border border-[#E5E2DD] flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="font-bold text-[11px] text-[#032517]">{pkg.service?.name}</div>
+                      <div className="text-[10px] text-stone-500">
+                        Còn {pkg.remainingSessions}/{pkg.totalSessions} buổi
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleLinkPackage(pkg.id)}
+                      disabled={loading}
+                      className="px-2.5 py-1 rounded-lg bg-[#1B3B2B] text-[#FED488] font-bold text-[10px] hover:bg-[#032517] shadow-xs"
+                    >
+                      Dùng Thẻ (0đ)
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Register new package button */}
+            {!isCompleted && (
+              <button
+                type="button"
+                onClick={() => setIsRegisterModalOpen(true)}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#1B3B2B] to-[#2D5A43] hover:from-[#032517] hover:to-[#1B3B2B] text-[#FED488] font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Đăng Ký Mua Gói 16 Buổi & Gán Ca Này</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="text-[10px] text-[#424843] flex items-center justify-between pt-1 border-t border-[#F0EDE9]">
           <span>KTV Ngự Y: <strong>{appointment.therapist?.name}</strong></span>
           <span className="text-emerald-700 font-semibold">Hoa hồng: {((appointment.therapist?.commissionRate || 0.1) * 100).toFixed(0)}%</span>
         </div>
@@ -206,6 +302,14 @@ export function AppointmentInspector({ appointment, onRefresh }: InspectorProps)
           </div>
         )}
       </div>
+
+      {/* Package Registration Modal */}
+      <PackageRegistrationModal
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        appointment={appointment}
+        onSuccess={onRefresh}
+      />
     </div>
   );
 }
