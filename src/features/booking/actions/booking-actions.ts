@@ -142,56 +142,55 @@ export async function createBookingAction(input: CreateBookingInput) {
 
 export async function getBookingWizardDataAction(branchId?: string, customerPhone?: string) {
   try {
-    const branches = await prisma.branch.findMany({
-      where: { status: "ACTIVE" },
-      orderBy: { createdAt: "asc" },
-    });
+    // Stage 1: Fetch branches & service categories in parallel
+    const [branches, categories] = await Promise.all([
+      prisma.branch.findMany({
+        where: { status: "ACTIVE" },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.serviceCategory.findMany({
+        include: { services: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+    ]);
 
     const activeBranchId = branchId || branches[0]?.id;
 
-    const categories = await prisma.serviceCategory.findMany({
-      include: {
-        services: true,
-      },
-      orderBy: { sortOrder: "asc" },
-    });
-
-    const rooms = activeBranchId
-      ? await prisma.roomBed.findMany({
-          where: { branchId: activeBranchId },
-          orderBy: { name: "asc" },
-        })
-      : [];
-
-    const therapists = await prisma.user.findMany({
-      where: {
-        role: "THERAPIST",
-        OR: [{ branchId: activeBranchId }, { branchId: null }],
-      },
-      select: {
-        id: true,
-        name: true,
-        specialty: true,
-        avatar: true,
-        branchId: true,
-      },
-    });
-
-    let customerPackages: any[] = [];
-    if (customerPhone) {
-      const customer = await prisma.user.findFirst({
-        where: { phone: customerPhone.trim() },
-        include: {
-          customerPackages: {
-            where: { status: "ACTIVE", remainingSessions: { gt: 0 } },
-            include: { service: true },
-          },
+    // Stage 2: Fetch rooms, therapists, and customer packages in parallel
+    const [rooms, therapists, customerPackages] = await Promise.all([
+      activeBranchId
+        ? prisma.roomBed.findMany({
+            where: { branchId: activeBranchId },
+            orderBy: { name: "asc" },
+          })
+        : [],
+      prisma.user.findMany({
+        where: {
+          role: "THERAPIST",
+          OR: [{ branchId: activeBranchId }, { branchId: null }],
         },
-      });
-      if (customer) {
-        customerPackages = customer.customerPackages;
-      }
-    }
+        select: {
+          id: true,
+          name: true,
+          specialty: true,
+          avatar: true,
+          branchId: true,
+        },
+      }),
+      customerPhone
+        ? prisma.user
+            .findFirst({
+              where: { phone: customerPhone.trim() },
+              include: {
+                customerPackages: {
+                  where: { status: "ACTIVE", remainingSessions: { gt: 0 } },
+                  include: { service: true },
+                },
+              },
+            })
+            .then((c) => c?.customerPackages || [])
+        : Promise.resolve([]),
+    ]);
 
     return {
       success: true,
