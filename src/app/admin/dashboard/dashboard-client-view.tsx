@@ -4,12 +4,13 @@ import React, { useEffect, useState } from "react";
 import { useRoleContext } from "@/shared/components/role-switcher-bar";
 import { getDashboardMetricsAction } from "@/features/dashboard/actions/metrics-actions";
 import { getRecentInvoicesAction } from "@/features/pos/actions/pos-actions";
+import { DashboardPeriod } from "@/features/dashboard/lib/period-helper";
 import { ExecutiveKpis } from "@/widgets/dashboard/executive-kpis";
 import { BranchRevenueChart } from "@/widgets/dashboard/branch-revenue-chart";
 import { TherapistLeaderboard } from "@/widgets/dashboard/therapist-leaderboard";
 import { InventoryAlertsWidget } from "@/widgets/dashboard/inventory-alerts-widget";
 import { PosTransactionsStream } from "@/widgets/dashboard/pos-transactions-stream";
-import { Download, RefreshCw } from "lucide-react";
+import { Download, RefreshCw, CalendarRange } from "lucide-react";
 
 interface DashboardClientViewProps {
   initialMetrics: any;
@@ -37,11 +38,13 @@ export function DashboardClientView({
   const [metrics, setMetrics] = useState<any>(initialMetrics);
   const [invoices, setInvoices] = useState<any[]>(initialInvoices);
   const [firstMount, setFirstMount] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState<DashboardPeriod>("TODAY");
 
-  const loadData = async (branch: string) => {
+  const loadData = async (branch: string, period?: DashboardPeriod) => {
+    const p = period || selectedPeriod;
     setLoading(true);
     const [metricsRes, invoicesRes] = await Promise.all([
-      getDashboardMetricsAction(branch),
+      getDashboardMetricsAction(branch, p),
       getRecentInvoicesAction(branch, 8),
     ]);
 
@@ -54,22 +57,35 @@ export function DashboardClientView({
     setLoading(false);
   };
 
+  const handlePeriodChange = (p: DashboardPeriod) => {
+    setSelectedPeriod(p);
+    loadData(selectedBranch, p);
+  };
+
   useEffect(() => {
     if (firstMount) {
       setFirstMount(false);
       // If branch changed from default "ALL", reload for that branch
       if (selectedBranch && selectedBranch !== "ALL") {
-        loadData(selectedBranch);
+        loadData(selectedBranch, selectedPeriod);
       }
       return;
     }
-    loadData(selectedBranch);
+    loadData(selectedBranch, selectedPeriod);
   }, [selectedBranch]);
+
+  const PERIOD_OPTIONS: Array<{ id: DashboardPeriod; label: string }> = [
+    { id: "TODAY", label: "Hôm Nay" },
+    { id: "WEEK", label: "7 Ngày Qua" },
+    { id: "MONTH", label: "30 Ngày Qua" },
+    { id: "THIS_MONTH", label: "Tháng Này" },
+    { id: "ALL", label: "Toàn Chuỗi" },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Top Header & Executive Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E5E2DD] shadow-xs">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E5E2DD] shadow-xs">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-serif font-bold text-xl text-[#032517]">
@@ -84,12 +100,31 @@ export function DashboardClientView({
             {selectedBranch === "ALL"
               ? "Dữ liệu thời gian thực hội sở và liên kết toàn chuỗi 7 chi nhánh toàn quốc"
               : `Dữ liệu thời gian thực được lọc riêng cho ${BRANCH_NAMES[selectedBranch] || selectedBranch}`}
+            {metrics?.periodLabel ? ` • Kỳ báo cáo: ${metrics.periodLabel}` : ""}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Period Segmented Control */}
+          <div className="inline-flex items-center p-1 bg-[#FAF7F2] rounded-xl border border-[#E5E2DD] text-xs font-semibold">
+            {PERIOD_OPTIONS.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handlePeriodChange(item.id)}
+                disabled={loading}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  selectedPeriod === item.id
+                    ? "bg-[#112C1E] text-[#FED488] shadow-2xs font-bold"
+                    : "text-[#424843] hover:text-[#032517]"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
           <button
-            onClick={() => loadData(selectedBranch)}
+            onClick={() => loadData(selectedBranch, selectedPeriod)}
             disabled={loading}
             className="p-2 rounded-xl border border-[#E5E2DD] hover:bg-[#FAF7F2] text-[#424843] transition disabled:opacity-50"
             title="Làm mới dữ liệu"
@@ -101,7 +136,7 @@ export function DashboardClientView({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1B3B2B] hover:bg-[#032517] text-[#FED488] text-xs font-semibold shadow-xs transition"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Xuất Báo Cáo Hội Sở</span>
+            <span>Xuất Báo Cáo</span>
           </button>
         </div>
       </div>
@@ -113,6 +148,8 @@ export function DashboardClientView({
           totalRevenue={metrics.totalRevenue}
           todayRevenue={metrics.todayRevenue}
           revenueGrowth={metrics.revenueGrowth}
+          periodLabel={metrics.periodLabel}
+          priorLabel={metrics.priorLabel}
           occupancyRate={metrics.occupancyRate}
           activePackagesCount={metrics.activePackagesCount}
           totalCommissions={metrics.totalCommissions}
@@ -128,6 +165,7 @@ export function DashboardClientView({
             <BranchRevenueChart
               data={metrics.branchComparison}
               packageSharePercent={metrics.packageSharePercent}
+              dailyTrend={metrics.dailyTrend}
             />
           </div>
           <div className="lg:col-span-5 xl:col-span-4">

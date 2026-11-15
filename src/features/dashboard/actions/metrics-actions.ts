@@ -3,8 +3,16 @@
 import { prisma } from "@/shared/lib/prisma";
 import { getCurrentSessionAction } from "@/features/auth/actions/auth-actions";
 import { resolveBranch } from "@/shared/lib/resolve-branch";
+import {
+  DashboardPeriod,
+  getPeriodDateRanges,
+  generateDailyBuckets,
+} from "../lib/period-helper";
 
-export async function getDashboardMetricsAction(branchId?: string) {
+export async function getDashboardMetricsAction(
+  branchId?: string,
+  period: DashboardPeriod = "TODAY"
+) {
   try {
     const session = await getCurrentSessionAction();
     if (!session || !["SUPER_ADMIN", "BRANCH_MANAGER"].includes(session.role)) {
@@ -18,64 +26,59 @@ export async function getDashboardMetricsAction(branchId?: string) {
 
     const matchedBranch = await resolveBranch(targetBranchParam);
     const resolvedBranchId = matchedBranch?.id;
-    const isAll = !resolvedBranchId;
+    const isAllBranches = !resolvedBranchId;
     const branchFilter = resolvedBranchId ? { branchId: resolvedBranchId } : {};
 
-    // Accurate Vietnam Timezone (UTC+7) boundary computation
-    const now = new Date();
-    const vnDateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(now);
-    const startOfToday = new Date(`${vnDateStr}T00:00:00+07:00`);
-    const endOfToday = new Date(`${vnDateStr}T23:59:59.999+07:00`);
+    // Calculate time boundaries for period & prior benchmark
+    const { start, end, priorStart, priorEnd, periodLabel, priorLabel, isAll } =
+      getPeriodDateRanges(period);
 
-    const yesterdayDate = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
-    const vnYesterdayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(yesterdayDate);
-    const startOfYesterday = new Date(`${vnYesterdayStr}T00:00:00+07:00`);
-    const endOfYesterday = new Date(`${vnYesterdayStr}T23:59:59.999+07:00`);
+    const periodDateFilter = !isAll && start && end
+      ? { createdAt: { gte: start, lte: end } }
+      : {};
 
-    // Unified parallel fetch across database
+    const priorDateFilter = !isAll && priorStart && priorEnd
+      ? { createdAt: { gte: priorStart, lte: priorEnd } }
+      : null;
+
+    // Parallel fetch across database
     const [
-      revenueAgg,
-      todayRevenueAgg,
-      yesterdayRevenueAgg,
+      periodRevenueAgg,
+      priorRevenueAgg,
       packageInvoicesAgg,
       commissionsAgg,
       rooms,
       activePackagesCount,
       allBranches,
       commissions,
-      todayAppointments,
+      periodAppointments,
       lowStockInventories,
+      periodInvoices,
     ] = await Promise.all([
       prisma.invoice.aggregate({
-        where: { ...branchFilter, status: "PAID" },
+        where: { ...branchFilter, status: "PAID", ...periodDateFilter },
         _sum: { finalAmount: true },
       }),
-      prisma.invoice.aggregate({
-        where: {
-          ...branchFilter,
-          status: "PAID",
-          createdAt: { gte: startOfToday, lte: endOfToday },
-        },
-        _sum: { finalAmount: true },
-      }),
-      prisma.invoice.aggregate({
-        where: {
-          ...branchFilter,
-          status: "PAID",
-          createdAt: { gte: startOfYesterday, lte: endOfYesterday },
-        },
-        _sum: { finalAmount: true },
-      }),
+      priorDateFilter
+        ? prisma.invoice.aggregate({
+            where: { ...branchFilter, status: "PAID", ...priorDateFilter },
+            _sum: { finalAmount: true },
+          })
+        : Promise.resolve({ _sum: { finalAmount: 0 } }),
       prisma.invoice.aggregate({
         where: {
           ...branchFilter,
           status: "PAID",
           appointmentId: null,
+          ...periodDateFilter,
         },
         _sum: { finalAmount: true },
       }),
       prisma.staffCommission.aggregate({
-        where: isAll ? {} : { appointment: { branchId: resolvedBranchId } },
+        where: {
+          ...(isAllBranches ? {} : { appointment: { branchId: resolvedBranchId } }),
+          ...(!isAll && start && end ? { createdAt: { gte: start, lte: end } } : {}),
+        },
         _sum: { commissionAmount: true },
       }),
       prisma.roomBed.findMany({ where: branchFilter }),
@@ -94,40 +97,44 @@ export async function getDashboardMetricsAction(branchId?: string) {
       }),
       prisma.branch.findMany({
         include: {
-          invoices: { where: { status: "PAID" }, select: { finalAmount: true, appointmentId: true } },
+          invoices: {
+            where: { status: "PAID", ...periodDateFilter },
+            select: { finalAmount: true, appointmentId: true },
+          },
           rooms: { select: { status: true } },
           _count: { select: { appointments: true } },
         },
       }),
       prisma.staffCommission.findMany({
-        where: isAll ? {} : { appointment: { branchId: resolvedBranchId } },
+        where: {
+          ...(isAllBranches ? {} : { appointment: { branchId: resolvedBranchId } }),
+          ...(!isAll && start && end ? { createdAt: { gte: start, lte: end } } : {}),
+        },
         include: { therapist: true },
       }),
       prisma.appointment.findMany({
-        where: branchFilter,
-        include: {
-          customer: true,
-          therapist: true,
-          roomBed: true,
-          service: true,
+        where: {
+          ...branchFilter,
+          ...(!isAll && start && end ? { startTime: { gte: start, lte: end } } : {}),
         },
+        include: { customer: true, therapist: true, roomBed: true, service: true },
         orderBy: { startTime: "asc" },
         take: 30,
       }),
       prisma.branchInventory.findMany({
-        where: {
-          ...branchFilter,
-          quantity: { lte: 200 },
-        },
+        where: { ...branchFilter, quantity: { lte: 200 } },
         include: { product: true, branch: true },
         orderBy: { quantity: "asc" },
         take: 6,
       }),
+      prisma.invoice.findMany({
+        where: { ...branchFilter, status: "PAID", ...periodDateFilter },
+        select: { finalAmount: true, createdAt: true },
+      }),
     ]);
 
-    const totalRevenue = revenueAgg._sum.finalAmount || 0;
-    const todayRevenue = todayRevenueAgg._sum.finalAmount || 0;
-    const yesterdayRevenue = yesterdayRevenueAgg._sum.finalAmount || 0;
+    const totalRevenue = periodRevenueAgg._sum.finalAmount || 0;
+    const priorRevenue = priorRevenueAgg._sum?.finalAmount || 0;
     const packageRevenue = packageInvoicesAgg._sum.finalAmount || 0;
 
     const packageSharePercent = totalRevenue > 0
@@ -135,22 +142,53 @@ export async function getDashboardMetricsAction(branchId?: string) {
       : 0;
 
     let revenueGrowth = 0;
-    if (yesterdayRevenue > 0) {
-      revenueGrowth = Number((((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100).toFixed(1));
-    } else if (todayRevenue > 0) {
-      revenueGrowth = 100.0;
-    } else {
-      revenueGrowth = 0.0;
+    if (!isAll) {
+      if (priorRevenue > 0) {
+        revenueGrowth = Number((((totalRevenue - priorRevenue) / priorRevenue) * 100).toFixed(1));
+      } else if (totalRevenue > 0) {
+        revenueGrowth = 100.0;
+      } else {
+        revenueGrowth = 0.0;
+      }
     }
 
-    const totalCommissions = commissionsAgg._sum.commissionAmount || 0;
+    // Daily Trend Buckets
+    const vnDateOnly = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
 
-    // Room & Cabin Occupancy Calculation
+    const buckets = !isAll && start && end
+      ? generateDailyBuckets(start, end)
+      : generateDailyBuckets(new Date(Date.now() - 6 * 24 * 3600 * 1000), new Date());
+
+    const dailyRevenueMap = new Map<string, { revenue: number; count: number }>();
+    for (const inv of periodInvoices) {
+      const dStr = vnDateOnly.format(new Date(inv.createdAt));
+      const cur = dailyRevenueMap.get(dStr) || { revenue: 0, count: 0 };
+      cur.revenue += inv.finalAmount;
+      cur.count += 1;
+      dailyRevenueMap.set(dStr, cur);
+    }
+
+    const dailyTrend = buckets.map((b) => {
+      const stat = dailyRevenueMap.get(b.dateStr) || { revenue: 0, count: 0 };
+      return {
+        date: b.dateStr,
+        label: b.label,
+        revenue: stat.revenue,
+        invoiceCount: stat.count,
+      };
+    });
+
+    const totalCommissions = commissionsAgg._sum.commissionAmount || 0;
     const totalRooms = rooms.length;
     const occupiedRooms = rooms.filter((r) => r.status === "OCCUPIED").length;
     const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
-    // Multi-branch Comparison
+    // Multi-branch Comparison for the period
     const branchComparison = allBranches.map((b) => {
       const rev = b.invoices.reduce((s, inv) => s + inv.finalAmount, 0);
       const pkgRev = b.invoices.filter((inv) => !inv.appointmentId).reduce((s, inv) => s + inv.finalAmount, 0);
@@ -194,10 +232,10 @@ export async function getDashboardMetricsAction(branchId?: string) {
       .sort((a, b) => b.totalCommissions - a.totalCommissions)
       .slice(0, 5);
 
-    // Dynamic Top Services Booking Ratio
-    const totalAppointmentsCount = todayAppointments.length;
+    // Top Services in Period
+    const totalAppointmentsCount = periodAppointments.length;
     const serviceCounts = new Map<string, number>();
-    for (const apt of todayAppointments) {
+    for (const apt of periodAppointments) {
       const name = apt.service?.name || "Khác";
       serviceCounts.set(name, (serviceCounts.get(name) || 0) + 1);
     }
@@ -214,9 +252,12 @@ export async function getDashboardMetricsAction(branchId?: string) {
       success: true,
       data: {
         totalRevenue,
-        todayRevenue,
-        yesterdayRevenue,
+        priorRevenue,
         revenueGrowth,
+        period,
+        periodLabel,
+        priorLabel,
+        dailyTrend,
         packageSharePercent,
         occupancyRate,
         totalRooms,
@@ -226,7 +267,7 @@ export async function getDashboardMetricsAction(branchId?: string) {
         branchComparison,
         therapistLeaderboard,
         topServices,
-        todayAppointments,
+        todayAppointments: periodAppointments,
         lowStockInventories,
       },
     };

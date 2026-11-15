@@ -9,6 +9,8 @@ interface ExecutiveKpiProps {
   totalRevenue: number;
   todayRevenue?: number;
   revenueGrowth?: number;
+  periodLabel?: string;
+  priorLabel?: string;
   occupancyRate: number;
   activePackagesCount: number;
   totalCommissions: number;
@@ -21,6 +23,8 @@ export function ExecutiveKpis({
   totalRevenue,
   todayRevenue = 0,
   revenueGrowth = 0,
+  periodLabel,
+  priorLabel = "so với hôm qua",
   occupancyRate,
   activePackagesCount,
   totalCommissions,
@@ -45,26 +49,28 @@ export function ExecutiveKpis({
 
         {/* Dynamic Mathematical Comparison */}
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-medium">
-          {revenueGrowth > 0 ? (
+          {priorLabel === "toàn thời gian" ? (
+            <span className="text-[11px] text-[#775A19] font-medium">Lũy kế toàn chuỗi từ khi thành lập</span>
+          ) : revenueGrowth > 0 ? (
             <div className="inline-flex items-center gap-1 text-emerald-700">
               <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-              <span>+{revenueGrowth}% so với hôm qua</span>
+              <span>+{revenueGrowth}% {priorLabel}</span>
             </div>
           ) : revenueGrowth < 0 ? (
             <div className="inline-flex items-center gap-1 text-red-700">
               <TrendingDown className="w-3.5 h-3.5 text-red-600" />
-              <span>{revenueGrowth}% so với hôm qua</span>
+              <span>{revenueGrowth}% {priorLabel}</span>
             </div>
           ) : (
             <div className="inline-flex items-center gap-1 text-stone-500">
               <Minus className="w-3.5 h-3.5 text-stone-400" />
-              <span>0.0% so với hôm qua</span>
+              <span>0.0% {priorLabel}</span>
             </div>
           )}
 
-          {todayRevenue > 0 && (
+          {periodLabel && (
             <span className="text-[10px] text-stone-400 font-normal">
-              ({formatVND(todayRevenue)} hôm nay)
+              ({periodLabel})
             </span>
           )}
         </div>

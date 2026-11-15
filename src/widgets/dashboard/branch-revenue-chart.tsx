@@ -44,13 +44,15 @@ export interface BranchPerformanceItem {
 interface BranchRevenueChartProps {
   data: BranchPerformanceItem[];
   packageSharePercent?: number;
+  dailyTrend?: Array<{ date: string; label: string; revenue: number; invoiceCount: number }>;
 }
 
 export function BranchRevenueChart({
   data,
   packageSharePercent = 0,
+  dailyTrend,
 }: BranchRevenueChartProps) {
-  const [viewMode, setViewMode] = useState<"table" | "chart">("table");
+  const [viewMode, setViewMode] = useState<"table" | "chart" | "trend">("table");
   const { selectedBranch, setSelectedBranch } = useRoleContext();
 
   const totalChainRevenue = data.reduce((s, b) => s + b.revenue, 0);
@@ -100,6 +102,17 @@ export function BranchRevenueChart({
               <span>Dạng Bảng</span>
             </button>
             <button
+              onClick={() => setViewMode("trend")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+                viewMode === "trend"
+                  ? "bg-[#112C1E] text-[#FED488] shadow-2xs"
+                  : "text-[#424843] hover:text-[#032517]"
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Xu Hướng Ngày</span>
+            </button>
+            <button
               onClick={() => setViewMode("chart")}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
                 viewMode === "chart"
@@ -108,7 +121,7 @@ export function BranchRevenueChart({
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
-              <span>Biểu Đồ</span>
+              <span>Cơ Cấu Thu</span>
             </button>
           </div>
 
@@ -233,11 +246,7 @@ export function BranchRevenueChart({
                     <td className="py-3.5 px-3 text-center">
                       <button
                         onClick={() => setSelectedBranch(b.code)}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
-                          isCurrent
-                            ? "bg-stone-200 text-stone-600 cursor-default"
-                            : "bg-[#112C1E] hover:bg-[#032517] text-[#FED488] shadow-2xs"
-                        }`}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${isCurrent ? "bg-stone-200 text-stone-600 cursor-default" : "bg-[#112C1E] hover:bg-[#032517] text-[#FED488] shadow-2xs"}`}
                       >
                         <span>{isCurrent ? "Đang chọn" : "Xem cơ sở"}</span>
                         {!isCurrent && <ChevronRight className="w-3 h-3" />}
@@ -257,30 +266,17 @@ export function BranchRevenueChart({
                     <span>TỔNG TOÀN CHUỖI ({data.length} Cơ Sở)</span>
                   </div>
                 </td>
-                <td className="py-3.5 px-3 text-right font-serif font-bold text-sm text-[#032517]">
-                  {formatVND(totalChainRevenue)}
-                </td>
-                <td className="py-3.5 px-3 text-right font-bold text-emerald-800">
-                  {formatVND(totalChainPackages)}
-                </td>
-                <td className="py-3.5 px-3 text-right font-bold text-stone-800">
-                  {formatVND(totalChainSingle)}
-                </td>
+                <td className="py-3.5 px-3 text-right font-serif font-bold text-sm text-[#032517]">{formatVND(totalChainRevenue)}</td>
+                <td className="py-3.5 px-3 text-right font-bold text-emerald-800">{formatVND(totalChainPackages)}</td>
+                <td className="py-3.5 px-3 text-right font-bold text-stone-800">{formatVND(totalChainSingle)}</td>
                 <td className="py-3.5 px-3 text-center">
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#112C1E] text-[#FED488] text-xs">
-                    {totalChainAppointments} ca
-                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#112C1E] text-[#FED488] text-xs">{totalChainAppointments} ca</span>
                 </td>
                 <td className="py-3.5 px-3 text-center text-xs text-stone-600">
-                  {data.length > 0
-                    ? `${Math.round(data.reduce((s, b) => s + b.occupancyRate, 0) / data.length)}% TB`
-                    : "0%"}
+                  {data.length > 0 ? `${Math.round(data.reduce((s, b) => s + b.occupancyRate, 0) / data.length)}% TB` : "0%"}
                 </td>
                 <td className="py-3.5 px-3 text-center">
-                  <button
-                    onClick={() => setSelectedBranch("ALL")}
-                    className="text-[11px] font-semibold text-[#775A19] hover:underline"
-                  >
+                  <button onClick={() => setSelectedBranch("ALL")} className="text-[11px] font-semibold text-[#775A19] hover:underline">
                     Xem toàn chuỗi
                   </button>
                 </td>
@@ -288,8 +284,24 @@ export function BranchRevenueChart({
             </tfoot>
           </table>
         </div>
+      ) : viewMode === "trend" ? (
+        /* Daily Revenue Trend Bar Chart */
+        <div className="h-72 mt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={dailyTrend || []} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E2DD" />
+              <XAxis dataKey="label" tick={{ fill: "#424843", fontSize: 11 }} axisLine={{ stroke: "#E5E2DD" }} />
+              <YAxis tickFormatter={(v) => formatCompactVND(v)} tick={{ fill: "#424843", fontSize: 11 }} axisLine={{ stroke: "#E5E2DD" }} />
+              <Tooltip
+                formatter={(val: any) => [formatVND(Number(val) || 0), "Doanh Thu"]}
+                contentStyle={{ backgroundColor: "#FAF7F2", borderColor: "#C5A059", borderRadius: "12px", fontSize: "12px" }}
+              />
+              <Bar dataKey="revenue" name="Doanh Thu Ngày" fill="#1B3B2B" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       ) : (
-        /* Bar Chart View */
+        /* Bar Chart View: Package vs Single */
         <div className="h-72 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>

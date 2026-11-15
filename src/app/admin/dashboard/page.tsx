@@ -14,7 +14,7 @@ export default async function DashboardPage() {
       : "ALL";
 
   const [metricsRes, invoicesRes] = await Promise.all([
-    getDashboardMetricsAction(branchFilter),
+    getDashboardMetricsAction(branchFilter, "TODAY"),
     getRecentInvoicesAction(branchFilter, 8),
   ]);
 
