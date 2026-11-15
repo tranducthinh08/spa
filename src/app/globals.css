@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --primary: #032517;
+    --primary-container: #1b3b2b;
+    --on-primary: #ffffff;
+    --on-primary-container: #83a590;
+
+    --secondary: #775a19;
+    --secondary-container: #fed488;
+    --on-secondary: #ffffff;
+    --on-secondary-container: #785a1a;
+    --secondary-fixed-dim: #e9c176;
+
+    --background: #fcf9f4;
+    --surface: #fcf9f4;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f6f3ee;
+    --surface-container: #f0ede9;
+    --surface-container-high: #ebe8e3;
+    --surface-container-highest: #e5e2dd;
+    --surface-tint: #456553;
+
+    --on-surface: #1c1c19;
+    --on-surface-variant: #424843;
+    --outline: #727973;
+    --outline-variant: #c1c8c2;
+    --gold: #c5a059;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--on-surface);
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: var(--font-playfair), serif;
+  }
+}
+
+/* Custom Utilities for Plumeria Royal Luxury */
+.bg-surface { background-color: var(--surface); }
+.bg-surface-container { background-color: var(--surface-container); }
+.bg-surface-container-low { background-color: var(--surface-container-low); }
+.bg-surface-container-high { background-color: var(--surface-container-high); }
+.bg-surface-container-lowest { background-color: var(--surface-container-lowest); }
+.bg-primary-container { background-color: var(--primary-container); }
+.bg-secondary-container { background-color: var(--secondary-container); }
+
+.text-primary-dark { color: var(--primary); }
+.text-on-primary-container { color: var(--on-primary-container); }
+.text-on-surface { color: var(--on-surface); }
+.text-on-surface-variant { color: var(--on-surface-variant); }
+.text-gold { color: var(--gold); }
+.text-secondary { color: var(--secondary); }
+
+.border-outline-variant { border-color: var(--outline-variant); }
+.border-gold { border-color: var(--gold); }
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface-container-low);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: 9999px;
+}
