@@ -6,6 +6,7 @@ export interface CompleteSessionParams {
   rating?: number;
   healthNotesUpdate?: string;
   paymentMethod?: "CASH" | "BANK_TRANSFER" | "CARD" | "PACKAGE_REDEMPTION";
+  discountAmount?: number;
 }
 
 export interface SessionCompletionResult {
@@ -185,7 +186,10 @@ export async function completeAppointmentTransaction(
     const chosenMethod = isPackageRedeem
       ? "PACKAGE_REDEMPTION"
       : paymentMethod || "CASH";
-    const finalAmount = isPackageRedeem ? 0 : serviceAmount;
+    const appliedDiscount = isPackageRedeem
+      ? serviceAmount
+      : Math.min(serviceAmount, params.discountAmount || 0);
+    const finalAmount = Math.max(0, serviceAmount - appliedDiscount);
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}-${apt.bookingCode.slice(-4)}`;
 
     const createdInvoice = await tx.invoice.upsert({
@@ -196,12 +200,13 @@ export async function completeAppointmentTransaction(
         customerId: apt.customerId,
         appointmentId: apt.id,
         totalAmount: serviceAmount,
-        discountAmount: isPackageRedeem ? serviceAmount : 0,
+        discountAmount: appliedDiscount,
         finalAmount,
         paymentMethod: chosenMethod,
         status: "PAID",
       },
       update: {
+        discountAmount: appliedDiscount,
         finalAmount,
         paymentMethod: chosenMethod,
         status: "PAID",

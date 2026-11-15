@@ -70,7 +70,7 @@ export function AdminSidebar({ onCloseMobile }: AdminSidebarProps) {
       roles: ["SUPER_ADMIN", "BRANCH_MANAGER", "RECEPTIONIST", "THERAPIST"] as RoleType[],
     },
     {
-      href: "/admin/dashboard?view=pos",
+      href: "/admin/pos",
       label: "Thu ngân POS",
       icon: Receipt,
       roles: ["SUPER_ADMIN", "BRANCH_MANAGER", "RECEPTIONIST"] as RoleType[],
