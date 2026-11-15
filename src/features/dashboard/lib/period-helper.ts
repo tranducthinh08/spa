@@ -10,6 +10,8 @@ export interface PeriodDateRanges {
   isAll: boolean;
 }
 
+export const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 export function getPeriodDateRanges(period: DashboardPeriod): PeriodDateRanges {
   const now = new Date();
   const vnFormatter = new Intl.DateTimeFormat("en-CA", {
@@ -23,7 +25,7 @@ export function getPeriodDateRanges(period: DashboardPeriod): PeriodDateRanges {
   const endOfToday = new Date(`${todayStr}T23:59:59.999+07:00`);
 
   if (period === "TODAY") {
-    const yesterdayDate = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayDate = new Date(startOfToday.getTime() - ONE_DAY_MS);
     const yesterdayStr = vnFormatter.format(yesterdayDate);
     return {
       start: startOfToday,
@@ -37,8 +39,8 @@ export function getPeriodDateRanges(period: DashboardPeriod): PeriodDateRanges {
   }
 
   if (period === "WEEK") {
-    const sevenDaysAgo = new Date(startOfToday.getTime() - 6 * 24 * 60 * 60 * 1000);
-    const fourteenDaysAgo = new Date(startOfToday.getTime() - 13 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(startOfToday.getTime() - 6 * ONE_DAY_MS);
+    const fourteenDaysAgo = new Date(startOfToday.getTime() - 13 * ONE_DAY_MS);
     const sevenDaysAgoEnd = new Date(sevenDaysAgo.getTime() - 1);
     return {
       start: sevenDaysAgo,
@@ -52,8 +54,8 @@ export function getPeriodDateRanges(period: DashboardPeriod): PeriodDateRanges {
   }
 
   if (period === "MONTH") {
-    const thirtyDaysAgo = new Date(startOfToday.getTime() - 29 * 24 * 60 * 60 * 1000);
-    const sixtyDaysAgo = new Date(startOfToday.getTime() - 59 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(startOfToday.getTime() - 29 * ONE_DAY_MS);
+    const sixtyDaysAgo = new Date(startOfToday.getTime() - 59 * ONE_DAY_MS);
     const thirtyDaysAgoEnd = new Date(thirtyDaysAgo.getTime() - 1);
     return {
       start: thirtyDaysAgo,

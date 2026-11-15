@@ -51,6 +51,10 @@ export async function createRoomAction(input: CreateRoomInput) {
     const matched = await resolveBranch(input.branchId);
     const branchId = matched?.id || input.branchId;
 
+    if (session.role !== "SUPER_ADMIN" && branchId !== session.branchId) {
+      return { success: false, error: "Bạn chỉ có quyền tạo buồng phòng tại chi nhánh được phân công." };
+    }
+
     if (!input.name?.trim()) {
       return { success: false, error: "Vui lòng nhập tên buồng phòng." };
     }
@@ -103,6 +107,15 @@ export async function updateRoomAction(
     const session = await getCurrentSessionAction();
     if (!session || !["SUPER_ADMIN", "BRANCH_MANAGER"].includes(session.role)) {
       return { success: false, error: "Bạn không có quyền cập nhật buồng phòng." };
+    }
+
+    const room = await prisma.roomBed.findUnique({ where: { id: roomId } });
+    if (!room) {
+      return { success: false, error: "Không tìm thấy buồng phòng này." };
+    }
+
+    if (session.role !== "SUPER_ADMIN" && room.branchId !== session.branchId) {
+      return { success: false, error: "Bạn chỉ có quyền quản trị buồng phòng tại cơ sở công tác của mình." };
     }
 
     const updated = await prisma.roomBed.update({
@@ -176,6 +189,10 @@ export async function batchSetupRoomsAction(
     const branch = matched || (await prisma.branch.findUnique({ where: { id: branchParam } }));
     if (!branch) {
       return { success: false, error: "Không tìm thấy chi nhánh." };
+    }
+
+    if (session.role !== "SUPER_ADMIN" && branch.id !== session.branchId) {
+      return { success: false, error: "Bạn chỉ có quyền thiết lập buồng phòng tại chi nhánh được phân công." };
     }
 
     const currentRooms = await prisma.roomBed.findMany({

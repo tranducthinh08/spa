@@ -1,9 +1,23 @@
 "use server";
 
+import crypto from "crypto";
 import { prisma } from "@/shared/lib/prisma";
 import { signSession, verifySession, SESSION_COOKIE_NAME } from "../lib/auth-session";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+
+// Timing-safe password comparison
+function safeComparePassword(stored: string, input: string): boolean {
+  if (!stored) return false;
+  const storedBuf = Buffer.from(stored, "utf-8");
+  const inputBuf = Buffer.from(input, "utf-8");
+  if (storedBuf.length !== inputBuf.length) {
+    const dummy = Buffer.alloc(inputBuf.length);
+    crypto.timingSafeEqual(dummy, dummy);
+    return false;
+  }
+  return crypto.timingSafeEqual(storedBuf, inputBuf);
+}
 
 export async function loginAction(formData: {
   emailOrPhone: string;
@@ -39,7 +53,7 @@ export async function loginAction(formData: {
       };
     }
 
-    if (user.password && user.password !== password) {
+    if (user.password && !safeComparePassword(user.password, password)) {
       return { success: false, error: "Mật khẩu không chính xác. Mặc định là: admin" };
     }
 

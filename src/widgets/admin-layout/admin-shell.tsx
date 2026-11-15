@@ -17,6 +17,7 @@ import { getBranchesAction } from "@/features/branches/actions/branch-actions";
 
 interface AdminShellProps {
   children: React.ReactNode;
+  initialBranches?: Array<{ code: string; name: string }>;
 }
 
 const BRANCH_LABELS: Record<string, string> = {
@@ -43,18 +44,20 @@ const BRANCH_OPTIONS = [
   { value: "HCM_BINH_THANH", label: "Plumeria Bình Thạnh - TP.HCM" },
 ];
 
-export function AdminShell({ children }: AdminShellProps) {
+export function AdminShell({ children, initialBranches = [] }: AdminShellProps) {
   const { currentPersona, selectedBranch, setSelectedBranch } = useRoleContext();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [dynamicBranches, setDynamicBranches] = useState<Array<{ code: string; name: string }>>([]);
+  const [dynamicBranches, setDynamicBranches] = useState<Array<{ code: string; name: string }>>(initialBranches);
 
   useEffect(() => {
-    getBranchesAction().then((res) => {
-      if (res.success && res.data) {
-        setDynamicBranches(res.data.map((b: any) => ({ code: b.code, name: b.name })));
-      }
-    });
-  }, []);
+    if (dynamicBranches.length === 0) {
+      getBranchesAction().then((res) => {
+        if (res.success && res.data) {
+          setDynamicBranches(res.data.map((b: any) => ({ code: b.code, name: b.name })));
+        }
+      });
+    }
+  }, [dynamicBranches.length]);
 
   const options = dynamicBranches.length > 0
     ? [

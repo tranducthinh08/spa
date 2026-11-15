@@ -12,8 +12,30 @@ import { InventoryAlertsWidget } from "@/widgets/dashboard/inventory-alerts-widg
 import { PosTransactionsStream } from "@/widgets/dashboard/pos-transactions-stream";
 import { Download, RefreshCw, CalendarRange } from "lucide-react";
 
+export interface DashboardMetricsData {
+  totalRevenue: number;
+  todayRevenue?: number;
+  priorRevenue: number;
+  revenueGrowth: number;
+  period: DashboardPeriod;
+  periodLabel: string;
+  priorLabel: string;
+  dailyTrend: Array<{ date: string; label: string; revenue: number; invoiceCount: number }>;
+  packageSharePercent: number;
+  occupancyRate: number;
+  totalRooms: number;
+  occupiedRooms: number;
+  totalCommissions: number;
+  activePackagesCount: number;
+  branchComparison: any[];
+  therapistLeaderboard: any[];
+  topServices: any[];
+  todayAppointments: any[];
+  lowStockInventories: any[];
+}
+
 interface DashboardClientViewProps {
-  initialMetrics: any;
+  initialMetrics?: DashboardMetricsData | null;
   initialInvoices: any[];
 }
 
@@ -35,7 +57,7 @@ export function DashboardClientView({
 }: DashboardClientViewProps) {
   const { selectedBranch } = useRoleContext();
   const [loading, setLoading] = useState(false);
-  const [metrics, setMetrics] = useState<any>(initialMetrics);
+  const [metrics, setMetrics] = useState<DashboardMetricsData | null>(initialMetrics || null);
   const [invoices, setInvoices] = useState<any[]>(initialInvoices);
   const [firstMount, setFirstMount] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<DashboardPeriod>("TODAY");

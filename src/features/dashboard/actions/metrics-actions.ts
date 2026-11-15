@@ -43,7 +43,6 @@ export async function getDashboardMetricsAction(
 
     // Parallel fetch across database
     const [
-      periodRevenueAgg,
       priorRevenueAgg,
       packageInvoicesAgg,
       commissionsAgg,
@@ -52,13 +51,10 @@ export async function getDashboardMetricsAction(
       allBranches,
       commissions,
       periodAppointments,
+      allPeriodServiceNames,
       lowStockInventories,
       periodInvoices,
     ] = await Promise.all([
-      prisma.invoice.aggregate({
-        where: { ...branchFilter, status: "PAID", ...periodDateFilter },
-        _sum: { finalAmount: true },
-      }),
       priorDateFilter
         ? prisma.invoice.aggregate({
             where: { ...branchFilter, status: "PAID", ...priorDateFilter },
@@ -102,7 +98,10 @@ export async function getDashboardMetricsAction(
             select: { finalAmount: true, appointmentId: true },
           },
           rooms: { select: { status: true } },
-          _count: { select: { appointments: true } },
+          appointments: {
+            where: { ...(!isAll && start && end ? { startTime: { gte: start, lte: end } } : {}) },
+            select: { id: true },
+          },
         },
       }),
       prisma.staffCommission.findMany({
@@ -121,6 +120,13 @@ export async function getDashboardMetricsAction(
         orderBy: { startTime: "asc" },
         take: 30,
       }),
+      prisma.appointment.findMany({
+        where: {
+          ...branchFilter,
+          ...(!isAll && start && end ? { startTime: { gte: start, lte: end } } : {}),
+        },
+        select: { service: { select: { name: true } } },
+      }),
       prisma.branchInventory.findMany({
         where: { ...branchFilter, quantity: { lte: 200 } },
         include: { product: true, branch: true },
@@ -133,7 +139,8 @@ export async function getDashboardMetricsAction(
       }),
     ]);
 
-    const totalRevenue = periodRevenueAgg._sum.finalAmount || 0;
+    // Consolidate total revenue directly from periodInvoices (eliminates redundant aggregate query)
+    const totalRevenue = periodInvoices.reduce((s, inv) => s + inv.finalAmount, 0);
     const priorRevenue = priorRevenueAgg._sum?.finalAmount || 0;
     const packageRevenue = packageInvoicesAgg._sum.finalAmount || 0;
 
@@ -212,7 +219,7 @@ export async function getDashboardMetricsAction(
         totalRooms: bTotalRooms,
         occupiedRooms: bOccupiedRooms,
         occupancyRate: bOccupancyRate,
-        appointmentsCount: b._count.appointments,
+        appointmentsCount: b.appointments.length,
       };
     });
 
@@ -232,10 +239,10 @@ export async function getDashboardMetricsAction(
       .sort((a, b) => b.totalCommissions - a.totalCommissions)
       .slice(0, 5);
 
-    // Top Services in Period
-    const totalAppointmentsCount = periodAppointments.length;
+    // Top Services in Period (accurately sampled across 100% of appointments in the period)
+    const totalAppointmentsCount = allPeriodServiceNames.length;
     const serviceCounts = new Map<string, number>();
-    for (const apt of periodAppointments) {
+    for (const apt of allPeriodServiceNames) {
       const name = apt.service?.name || "Khác";
       serviceCounts.set(name, (serviceCounts.get(name) || 0) + 1);
     }
