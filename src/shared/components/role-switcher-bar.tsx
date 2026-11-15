@@ -127,11 +127,19 @@ export function RoleProvider({
     setCurrentPersona(p);
     localStorage.setItem("plumeria_persona_id", p.id);
     const res = await quickDemoLoginAction(p.role);
-    if (res.success && res.data?.redirectTo) {
-      window.location.href = res.data.redirectTo;
-    } else {
-      window.location.reload();
+    if (res.success && res.data) {
+      if (res.data.branchCode) {
+        setSelectedBranch(res.data.branchCode);
+        localStorage.setItem("plumeria_branch", res.data.branchCode);
+      }
+      if (res.data.redirectTo) {
+        window.location.href = res.data.redirectTo;
+        return;
+      }
+    } else if (!res.success) {
+      alert(res.error || "Không thể chuyển đổi tài khoản.");
     }
+    window.location.reload();
   };
 
   const handleSetBranch = (b: string) => {

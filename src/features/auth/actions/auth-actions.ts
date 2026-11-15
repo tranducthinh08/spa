@@ -95,10 +95,68 @@ export async function quickDemoLoginAction(role: string, redirectTo?: string) {
       };
     }
 
-    const user = await prisma.user.findFirst({
+    let user = await prisma.user.findFirst({
       where: { role },
       include: { branch: true },
     });
+
+    if (!user) {
+      const firstBranch = await prisma.branch.findFirst({ orderBy: { createdAt: "asc" } });
+      const branchId = firstBranch?.id;
+
+      if (role === "BRANCH_MANAGER") {
+        user = await prisma.user.create({
+          data: {
+            name: "Vũ Minh Châu",
+            email: "manager.langha@plumeria.vn",
+            phone: "0912345678",
+            password: "admin",
+            role: "BRANCH_MANAGER",
+            branchId,
+            avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=120&q=80",
+          },
+          include: { branch: true },
+        });
+      } else if (role === "SUPER_ADMIN") {
+        user = await prisma.user.create({
+          data: {
+            name: "Hoàng Đức Long",
+            email: "admin@plumeria.vn",
+            phone: "0903456789",
+            password: "admin",
+            role: "SUPER_ADMIN",
+            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80",
+          },
+          include: { branch: true },
+        });
+      } else if (role === "RECEPTIONIST") {
+        user = await prisma.user.create({
+          data: {
+            name: "Lê Thuỳ Linh",
+            email: "letan.langha@plumeria.vn",
+            phone: "0922334455",
+            password: "admin",
+            role: "RECEPTIONIST",
+            branchId,
+            avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80",
+          },
+          include: { branch: true },
+        });
+      } else if (role === "THERAPIST") {
+        user = await prisma.user.create({
+          data: {
+            name: "Lê Hoài An",
+            email: "ktv.an@plumeria.vn",
+            phone: "0933445577",
+            password: "admin",
+            role: "THERAPIST",
+            branchId,
+            avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80",
+          },
+          include: { branch: true },
+        });
+      }
+    }
 
     if (!user) {
       return { success: false, error: `Không tìm thấy tài khoản mẫu cho vai trò: ${role}` };
@@ -137,6 +195,8 @@ export async function quickDemoLoginAction(role: string, redirectTo?: string) {
         id: user.id,
         name: user.name,
         role: user.role,
+        branchId: user.branchId,
+        branchCode: user.branch?.code,
         branchName: user.branch?.name,
         redirectTo:
           redirectTo && redirectTo !== "/admin/dashboard"
