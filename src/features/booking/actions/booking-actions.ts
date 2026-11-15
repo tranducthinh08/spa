@@ -3,6 +3,7 @@
 import { prisma } from "@/shared/lib/prisma";
 import { safeRevalidatePath } from "@/shared/lib/safe-revalidate";
 import { resolveBranch } from "@/shared/lib/resolve-branch";
+import { getCurrentSessionAction } from "@/features/auth/actions/auth-actions";
 
 export interface CreateBookingInput {
   branchId: string;
@@ -143,8 +144,13 @@ export async function createBookingAction(input: CreateBookingInput) {
 
 export async function getBookingWizardDataAction(branchId?: string, customerPhone?: string) {
   try {
-    const isAll = !branchId || branchId === "ALL";
-    const matchedBranch = await resolveBranch(branchId);
+    const session = await getCurrentSessionAction().catch(() => null);
+    let targetBranchParam = branchId;
+    if (session && session.role !== "SUPER_ADMIN" && session.role !== "CUSTOMER" && session.branchId) {
+      targetBranchParam = session.branchId;
+    }
+    const isAll = !targetBranchParam || targetBranchParam === "ALL";
+    const matchedBranch = await resolveBranch(targetBranchParam);
     const resolvedBranchId = matchedBranch?.id;
 
     // Stage 1: Fetch branches & service categories in parallel

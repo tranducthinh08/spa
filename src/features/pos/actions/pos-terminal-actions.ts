@@ -14,7 +14,7 @@ export async function getPosTerminalDataAction(branchId?: string) {
     }
 
     let targetBranch = branchId;
-    if (session.role === "BRANCH_MANAGER" && session.branchId) {
+    if (session.role !== "SUPER_ADMIN" && session.branchId) {
       targetBranch = session.branchId;
     }
 
@@ -161,8 +161,9 @@ export async function sellPackageAction(params: {
     const pkgCode = `PKG-${Date.now().toString().slice(-6)}-${customer.phone.slice(-4)}`;
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}-${pkgCode.slice(-4)}`;
 
-    const matchedBranch = await resolveBranch(params.branchId);
-    const resolvedBranchId = matchedBranch?.id || params.branchId;
+    const branchToUse = (session.role !== "SUPER_ADMIN" && session.branchId) ? session.branchId : params.branchId;
+    const matchedBranch = await resolveBranch(branchToUse);
+    const resolvedBranchId = matchedBranch?.id || branchToUse;
 
     const transactionResult = await prisma.$transaction(async (tx) => {
       // 1. Create CustomerPackage

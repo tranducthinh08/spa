@@ -13,6 +13,8 @@ export interface Persona {
   title: string;
   branchName: string;
   avatar: string;
+  branchCode?: string;
+  branchId?: string;
 }
 
 export const DEMO_PERSONAS: Persona[] = [
@@ -21,32 +23,36 @@ export const DEMO_PERSONAS: Persona[] = [
     name: "Hoàng Đức Long",
     role: "SUPER_ADMIN",
     title: "Hội Đồng Quản Trị",
-    branchName: "Toàn Chuỗi 7 Cơ Sở",
+    branchName: "Toàn Chuỗi Toàn Quốc",
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80",
+    branchCode: "ALL",
   },
   {
     id: "manager",
     name: "Vũ Minh Châu",
     role: "BRANCH_MANAGER",
     title: "Giám Đốc Chi Nhánh",
-    branchName: "Plumeria Láng Hạ",
+    branchName: "Plumeria Láng Hạ (Flagship)",
     avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=120&q=80",
+    branchCode: "LANG_HA",
   },
   {
     id: "receptionist",
     name: "Lê Thuỳ Linh",
     role: "RECEPTIONIST",
     title: "Lễ Tân Trưởng & POS",
-    branchName: "Plumeria Láng Hạ",
+    branchName: "Plumeria Láng Hạ (Flagship)",
     avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80",
+    branchCode: "LANG_HA",
   },
   {
     id: "therapist",
     name: "Lê Hoài An",
     role: "THERAPIST",
     title: "KTV Ngự Y Cung Đình",
-    branchName: "Plumeria Láng Hạ",
+    branchName: "Plumeria Láng Hạ (Flagship)",
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80",
+    branchCode: "LANG_HA",
   },
 ];
 
@@ -69,8 +75,10 @@ export function createPersonaFromSession(sess?: SessionPayload | null): Persona 
     name: sess.name,
     role: (sess.role === "CUSTOMER" ? "SUPER_ADMIN" : sess.role) as RoleType,
     title: roleTitles[sess.role] || sess.role,
-    branchName: sess.branchId ? "Chi Nhánh Được Gán" : "Hội Sở Toàn Chuỗi",
+    branchName: sess.branchName || (sess.branchCode ? `Plumeria ${sess.branchCode}` : "Hội Sở Toàn Chuỗi"),
     avatar: defaultAvatars[sess.role] || defaultAvatars.THERAPIST,
+    branchCode: sess.branchCode || undefined,
+    branchId: sess.branchId || undefined,
   };
 }
 
@@ -97,30 +105,38 @@ export function RoleProvider({
   children: React.ReactNode;
   initialSession?: SessionPayload | null;
 }) {
+  const isSuperAdmin = initialSession?.role === "SUPER_ADMIN";
+  const staffBranch = initialSession?.branchCode || initialSession?.branchId || "LANG_HA";
+
   const [currentPersona, setCurrentPersona] = useState<Persona>(() =>
     createPersonaFromSession(initialSession)
   );
   const [selectedBranch, setSelectedBranch] = useState<string>(
-    initialSession?.branchId || "ALL"
+    isSuperAdmin ? "ALL" : staffBranch
   );
 
   useEffect(() => {
-    if (initialSession) {
-      setCurrentPersona(createPersonaFromSession(initialSession));
-      if (initialSession.branchId) {
-        setSelectedBranch(initialSession.branchId);
+    const applySession = (sess: SessionPayload | null) => {
+      if (!sess) return;
+      const persona = createPersonaFromSession(sess);
+      setCurrentPersona(persona);
+      if (sess.role !== "SUPER_ADMIN") {
+        const targetBranch = sess.branchCode || sess.branchId || "LANG_HA";
+        setSelectedBranch(targetBranch);
+        localStorage.setItem("plumeria_branch", targetBranch);
+      } else {
+        const saved = localStorage.getItem("plumeria_branch");
+        setSelectedBranch(saved || "ALL");
       }
+    };
+
+    if (initialSession) {
+      applySession(initialSession);
     } else {
       getCurrentSessionAction().then((sess) => {
-        if (sess) {
-          setCurrentPersona(createPersonaFromSession(sess));
-          if (sess.branchId) setSelectedBranch(sess.branchId);
-        }
+        if (sess) applySession(sess);
       });
     }
-
-    const savedBranch = localStorage.getItem("plumeria_branch");
-    if (savedBranch) setSelectedBranch(savedBranch);
   }, [initialSession]);
 
   const handleSetPersona = async (p: Persona) => {
@@ -128,9 +144,13 @@ export function RoleProvider({
     localStorage.setItem("plumeria_persona_id", p.id);
     const res = await quickDemoLoginAction(p.role);
     if (res.success && res.data) {
-      if (res.data.branchCode) {
-        setSelectedBranch(res.data.branchCode);
-        localStorage.setItem("plumeria_branch", res.data.branchCode);
+      if (p.role !== "SUPER_ADMIN") {
+        const targetBranch = res.data.branchCode || res.data.branchId || "LANG_HA";
+        setSelectedBranch(targetBranch);
+        localStorage.setItem("plumeria_branch", targetBranch);
+      } else {
+        const savedBranch = localStorage.getItem("plumeria_branch") || "ALL";
+        setSelectedBranch(savedBranch);
       }
       if (res.data.redirectTo) {
         window.location.href = res.data.redirectTo;
@@ -143,6 +163,9 @@ export function RoleProvider({
   };
 
   const handleSetBranch = (b: string) => {
+    if (currentPersona.role !== "SUPER_ADMIN") {
+      return;
+    }
     setSelectedBranch(b);
     localStorage.setItem("plumeria_branch", b);
   };

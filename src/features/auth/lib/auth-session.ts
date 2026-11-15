@@ -11,6 +11,8 @@ export interface SessionPayload {
   phone: string;
   role: "SUPER_ADMIN" | "BRANCH_MANAGER" | "RECEPTIONIST" | "THERAPIST" | "CUSTOMER";
   branchId?: string | null;
+  branchCode?: string | null;
+  branchName?: string | null;
   membershipTier?: string;
   exp: number; // timestamp
 }

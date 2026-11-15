@@ -9,6 +9,7 @@ import {
   Bell,
   ChevronRight,
   ExternalLink,
+  Lock,
 } from "lucide-react";
 import { useRoleContext } from "@/shared/components/role-switcher-bar";
 import { AdminSidebar } from "./admin-sidebar";
@@ -43,7 +44,7 @@ const BRANCH_OPTIONS = [
 ];
 
 export function AdminShell({ children }: AdminShellProps) {
-  const { selectedBranch, setSelectedBranch } = useRoleContext();
+  const { currentPersona, selectedBranch, setSelectedBranch } = useRoleContext();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [dynamicBranches, setDynamicBranches] = useState<Array<{ code: string; name: string }>>([]);
 
@@ -117,21 +118,33 @@ export function AdminShell({ children }: AdminShellProps) {
 
           {/* Right: Branch Selector & Shortcut to Public Services */}
           <div className="flex items-center gap-3">
-            {/* Branch Selector Dropdown */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <Building2 className="w-3.5 h-3.5 text-[#775A19] hidden sm:inline" />
-              <select
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                className="bg-white border border-[#E5E2DD] text-[#032517] rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#C5A059] shadow-2xs max-w-[220px] truncate"
+            {currentPersona.role === "SUPER_ADMIN" ? (
+              /* Branch Selector Dropdown for SUPER_ADMIN only */
+              <div className="flex items-center gap-1.5 text-xs">
+                <Building2 className="w-3.5 h-3.5 text-[#775A19] hidden sm:inline" />
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  className="bg-white border border-[#E5E2DD] text-[#032517] rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#C5A059] shadow-2xs max-w-[220px] truncate"
+                >
+                  {options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              /* Locked Branch Badge for Staff */
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-600/20 text-[#112C1E] text-xs font-semibold shadow-2xs"
+                title="Cơ sở công tác được cố định theo nhân sự"
               >
-                {options.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <Lock className="w-3.5 h-3.5 text-[#775A19]" />
+                <span className="max-w-[190px] truncate">{currentBranchLabel}</span>
+                <span className="text-[10px] text-[#775A19]/80 font-normal hidden lg:inline">(Cố định)</span>
+              </div>
+            )}
 
             {/* Shortcut to Customer Services page */}
             <Link

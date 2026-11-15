@@ -50,6 +50,8 @@ export async function loginAction(formData: {
       phone: user.phone,
       role: user.role as any,
       branchId: user.branchId,
+      branchCode: user.branch?.code,
+      branchName: user.branch?.name,
       membershipTier: user.membershipTier,
     });
 
@@ -173,6 +175,8 @@ export async function quickDemoLoginAction(role: string, redirectTo?: string) {
       phone: user.phone,
       role: user.role as any,
       branchId: user.branchId,
+      branchCode: user.branch?.code,
+      branchName: user.branch?.name,
       membershipTier: user.membershipTier,
     });
 
@@ -230,6 +234,16 @@ export async function getCurrentSessionAction() {
     if (!session || session.role === "CUSTOMER") {
       cookieStore.delete(SESSION_COOKIE_NAME);
       return null;
+    }
+    if (session.branchId && !session.branchCode) {
+      const branch = await prisma.branch.findUnique({
+        where: { id: session.branchId },
+        select: { code: true, name: true },
+      });
+      if (branch) {
+        session.branchCode = branch.code;
+        session.branchName = branch.name;
+      }
     }
     return session;
   } catch {

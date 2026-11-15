@@ -74,8 +74,14 @@ export function UserFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    if (role !== "SUPER_ADMIN" && !branchId) {
+      setError("Vui lòng chọn cơ sở công tác cố định cho nhân sự.");
+      return;
+    }
+
+    setLoading(true);
 
     const payload: StaffUserInput = {
       name,

@@ -13,7 +13,7 @@ export async function getInventoryStockAction(branchId?: string) {
     }
 
     const whereClause: any = {};
-    if (session.role === "BRANCH_MANAGER" && session.branchId) {
+    if (session.role !== "SUPER_ADMIN" && session.branchId) {
       whereClause.branchId = session.branchId;
     } else if (branchId && branchId !== "ALL") {
       const matched = await resolveBranch(branchId);
@@ -119,7 +119,7 @@ export async function getRecentInvoicesAction(branchId?: string, limit = 10) {
     }
 
     const where: any = {};
-    if (session.role === "BRANCH_MANAGER" && session.branchId) {
+    if (session.role !== "SUPER_ADMIN" && session.branchId) {
       where.branchId = session.branchId;
     } else if (branchId && branchId !== "ALL") {
       const matched = await resolveBranch(branchId);

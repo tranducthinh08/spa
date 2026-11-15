@@ -20,7 +20,9 @@ export async function getAppointmentsAction(filters?: {
 
     const whereClause: any = {};
 
-    if (filters?.branchId && filters.branchId !== "ALL") {
+    if (session.role !== "SUPER_ADMIN" && session.branchId) {
+      whereClause.branchId = session.branchId;
+    } else if (filters?.branchId && filters.branchId !== "ALL") {
       const matched = await resolveBranch(filters.branchId);
       whereClause.branchId = matched ? matched.id : filters.branchId;
     }

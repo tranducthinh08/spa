@@ -98,6 +98,10 @@ export async function createStaffUserAction(input: StaffUserInput) {
       return { success: false, error: "Vui lòng điền đầy đủ Họ tên, Email và Số điện thoại." };
     }
 
+    if (input.role !== "SUPER_ADMIN" && !input.branchId) {
+      return { success: false, error: "Vui lòng chọn cơ sở công tác cố định cho nhân sự." };
+    }
+
     // Kiểm tra trùng lặp email hoặc SĐT
     const existing = await prisma.user.findFirst({
       where: {

@@ -12,7 +12,7 @@ export async function getDashboardMetricsAction(branchId?: string) {
     }
 
     let targetBranchParam = branchId;
-    if (session.role === "BRANCH_MANAGER" && session.branchId) {
+    if (session.role !== "SUPER_ADMIN" && session.branchId) {
       targetBranchParam = session.branchId;
     }
 
